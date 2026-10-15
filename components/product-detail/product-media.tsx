@@ -1,11 +1,11 @@
 "use client";
 
 import { cn } from "cn";
-import Image, { getImageProps } from "next/image";
 import { type ReactNode, useEffect, useState } from "react";
 import { preload } from "react-dom";
 
 import { AutoPlayVideo } from "@/components/ui/auto-play-video";
+import { getImageProps, Image } from "@/components/ui/image";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import type { Image as ImageType, Video } from "@/lib/media/types";
 

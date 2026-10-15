@@ -2,8 +2,9 @@
 
 import { cn } from "cn";
 import { PauseIcon, PlayIcon } from "lucide-react";
-import Image from "next/image";
 import { type ComponentProps, useEffect, useRef, useState, useSyncExternalStore } from "react";
+
+import { Image } from "@/components/ui/image";
 
 interface AutoPlayVideoPreviewImage {
   src: string;

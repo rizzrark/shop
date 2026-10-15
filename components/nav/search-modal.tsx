@@ -4,7 +4,6 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { getSearchResultUrl } from "@shopify/hydrogen";
 import { cn } from "cn";
 import { Search, X } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   type FormEvent,
@@ -17,6 +16,7 @@ import {
 
 import { Price } from "@/components/product/price";
 import { Dialog, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Image } from "@/components/ui/image";
 import { useRecentlyViewedProducts } from "@/lib/product/client";
 import { usePredictiveSearch } from "@/lib/search/client";
 import type { PredictiveSearchProduct, SearchSuggestion } from "@/lib/search/types";

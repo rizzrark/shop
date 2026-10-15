@@ -1,6 +1,5 @@
-import Image from "next/image";
-
 import { Container } from "@/components/ui/container";
+import { Image } from "@/components/ui/image";
 import { Link } from "@/components/ui/link";
 import { Page } from "@/components/ui/page";
 import { Prose } from "@/components/ui/prose";

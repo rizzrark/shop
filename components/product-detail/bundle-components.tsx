@@ -1,5 +1,4 @@
-import Image from "next/image";
-
+import { Image } from "@/components/ui/image";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { Link } from "@/components/ui/link";
 import type { ProductVariantComponent, ProductVariantReference } from "@/lib/product/types";
