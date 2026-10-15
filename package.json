@@ -2,22 +2,26 @@
   "name": "vercel-shop",
   "version": "2026.10.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "next build",
+    "build": "vite build",
     "build:agent": "eve build",
-    "dev": "next dev",
-    "dev:portless": "portless shop next dev",
+    "dev": "vite dev",
+    "dev:portless": "portless shop vite dev",
     "format": "oxfmt",
     "lint": "oxlint . && oxfmt --check",
-    "start": "next start",
+    "start": "node .output/server/index.mjs",
     "test": "vitest run",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
+    "@fontsource/geist-mono": "5.3.0",
+    "@fontsource/geist-sans": "5.3.0",
     "@shopify/hydrogen": "2026.10.0",
-    "@tailwindcss/turbopack": "4.3.3",
     "@tailwindcss/typography": "0.5.20",
+    "@tanstack/react-router": "1.170.44",
+    "@tanstack/react-start": "1.169.2",
     "@types/node": "26.6.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
@@ -30,7 +34,7 @@
     "cn": "0.4.0",
     "eve": "0.76.3",
     "lucide-react": "1.55.0",
-    "next": "16.4.0",
+    "nitro": "3.0.260903-beta",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
     "react": "19.3.0",
@@ -43,6 +47,9 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@vitejs/plugin-react": "6.1.2",
+    "vite": "8.3.4",
     "vitest": "5.0.4"
   },
   "devEngines": {

@@ -1,6 +1,37 @@
-import type { Metadata } from "next";
-
 import { shopConfig } from "@/lib/config";
+
+export interface DocumentImage {
+  alt?: string | null;
+  height?: number;
+  url: string;
+  width?: number;
+}
+
+export interface DocumentMetadata {
+  alternates?: {
+    canonical?: string;
+  };
+  description?: string;
+  openGraph?: {
+    description?: string;
+    images?: Array<string | DocumentImage>;
+    siteName?: string;
+    title?: string;
+    type?: "article" | "website";
+    url?: string;
+  };
+  robots?: {
+    follow?: boolean;
+    index?: boolean;
+  };
+  title?: string | { default: string; template?: string };
+  twitter?: {
+    card?: string;
+    description?: string;
+    images?: Array<string | DocumentImage>;
+    title?: string;
+  };
+}
 
 import type { SearchParamsInput } from "./types";
 
@@ -49,7 +80,7 @@ export function buildAlternates({
 }: {
   pathname: string;
   searchParams?: SearchParamsInput;
-}): Metadata["alternates"] {
+}): DocumentMetadata["alternates"] {
   return { canonical: buildCanonicalPath(pathname, searchParams) };
 }
 
@@ -73,7 +104,7 @@ export function buildOpenGraph({
         alt?: string;
       }
   >;
-}): Metadata["openGraph"] {
+}): DocumentMetadata["openGraph"] {
   // Omit type so product pages can emit og:type=product through raw meta tags.
   return {
     ...(type ? { type } : {}),

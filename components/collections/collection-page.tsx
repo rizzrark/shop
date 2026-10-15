@@ -1,4 +1,4 @@
-import { type ReactNode, Suspense } from "react";
+import { type ReactNode, Suspense, use } from "react";
 
 import { CollectionViewedTracker } from "@/components/analytics/trackers";
 import { BrowseResultsFallback } from "@/components/collections/browse";
@@ -61,7 +61,7 @@ export function CollectionBrowseBoundary({ children }: CollectionBrowseBoundaryP
   return <Suspense fallback={<BrowseResultsFallback />}>{children}</Suspense>;
 }
 
-// The static default view otherwise renders from the client cache for any search string; reading search params makes the router ask the server, which proxy.ts rewrites to the refine route.
+// Search changes stay on the collection route. This read keeps the matched route from treating every query as the default page.
 export function SearchParamsProbe({ searchParams }: { searchParams: Promise<unknown> }) {
   return (
     <Suspense fallback={null}>
@@ -70,8 +70,8 @@ export function SearchParamsProbe({ searchParams }: { searchParams: Promise<unkn
   );
 }
 
-async function SearchParamsRead({ searchParams }: { searchParams: Promise<unknown> }) {
-  await searchParams;
+function SearchParamsRead({ searchParams }: { searchParams: Promise<unknown> }) {
+  use(searchParams);
   return null;
 }
 

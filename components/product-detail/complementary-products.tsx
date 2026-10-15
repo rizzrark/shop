@@ -2,19 +2,18 @@ import { Price } from "@/components/product/price";
 import { Image } from "@/components/ui/image";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { Link } from "@/components/ui/link";
-import { getProductRecommendations } from "@/lib/product/server";
 import type { ProductCard } from "@/lib/product/types";
 
-export async function ComplementaryProducts({
-  handle,
+export function ComplementaryProducts({
   limit,
+  products,
   title,
 }: {
-  handle: string;
   limit: number;
+  products: ProductCard[];
   title: string;
 }) {
-  const complementary = await getProductRecommendations({ handle, intent: "COMPLEMENTARY" });
+  const complementary = products.slice(0, limit);
   if (complementary.length === 0) return null;
   return (
     <div className="grid gap-2.5" data-slot="complementary-products">

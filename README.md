@@ -1,9 +1,9 @@
 # Vercel Shop
 
-Agent-ready commerce, powered by Shopify, Next, and Eve.
+Agent-ready commerce, powered by Shopify, TanStack Start, and Eve.
 
 - **Shopify owns commerce.** Catalog, cart, checkout, customer accounts, predictive search, and policies come from Shopify through the framework-agnostic Hydrogen SDK (not the Hydrogen React Router framework).
-- **Next.js owns the app.** Routing, Server Components, caching and invalidation, metadata, and the storefront's machine-readable surface for answer engines: Markdown representations, `/llms.txt`, structured data, and the sitemap.
+- **TanStack Start owns the app.** Routing, server rendering, caching and invalidation, metadata, and the storefront's machine-readable surface for answer engines: Markdown representations, `/llms.txt`, structured data, and the sitemap.
 - **Eve owns the agent.** Shop Agent's sessions, tools, and connections; its tools call Shopify directly.
 
 See [vercel.shop](https://vercel.shop) for full documentation.
@@ -53,10 +53,10 @@ Shopify
 - Customer accounts through the Customer Account API, opt-in
 - Shopify analytics, consent, and WebMCP tool registration, opt-in
 
-Next.js
+TanStack Start
 
-- Next.js 16 App Router, React 19, React Compiler, Tailwind CSS 4, shadcn/ui
-- Partial prerendering with tagged caches invalidated by Shopify webhooks
+- TanStack Start on Vite and Nitro, React 19, React Compiler, Tailwind CSS 4, shadcn/ui
+- Tagged catalog cache invalidated by Shopify webhooks
 - Markdown representations, `/llms.txt`, Schema.org data, sitemap, and robots for answer engines
 - Single-locale storefront by default; skills add next-intl and Shopify Markets
 

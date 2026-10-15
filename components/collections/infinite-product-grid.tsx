@@ -40,9 +40,11 @@ export function InfiniteProductGrid({
 
     try {
       const result = await loadMoreBrowseProductsAction({
-        cursor: pageInfo.endCursor,
-        search,
-        source,
+        data: {
+          cursor: pageInfo.endCursor,
+          search,
+          source,
+        },
       });
       // Live cursor pages can re-emit a boundary product if the ranking shifts mid-scroll; skip ids already shown.
       setAdditionalProducts((prev) => {

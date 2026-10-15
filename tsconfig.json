@@ -13,24 +13,11 @@
     "paths": {
       "@/*": ["./*"]
     },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2017"
   },
   "exclude": ["node_modules", "scripts", "tmp", ".eve", ".output", ".nitro", "dist"],
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "global.ts",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", "global.ts", "**/*.mts"]
 }

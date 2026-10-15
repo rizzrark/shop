@@ -2,11 +2,11 @@
 
 import type { ShopifyScriptsI18n, ShopifyScriptsShop } from "@shopify/hydrogen";
 import { ShopifyScripts, useCartAnalytics } from "@shopify/hydrogen/react";
-import { useRouter } from "next/navigation";
 import { type ReactNode, useSyncExternalStore } from "react";
 
 import { PageViewedTracker } from "@/components/analytics/trackers";
 import { shopConfig } from "@/lib/config";
+import { useRouter } from "@/lib/navigation/client";
 import { SHOPIFY_ROUTE_TEMPLATES } from "@/lib/shopify/routing";
 
 interface ShopifyScriptsTrackerProps {

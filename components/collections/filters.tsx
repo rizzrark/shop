@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Facets } from "@/lib/filters/types";
@@ -24,8 +24,8 @@ export function CollectionFilters({ facets }: CollectionFiltersProps) {
   );
 }
 
-async function ResolvedCollectionFilters({ facets }: ResolvedCollectionFiltersProps) {
-  const { filters, priceRange } = await facets;
+function ResolvedCollectionFilters({ facets }: ResolvedCollectionFiltersProps) {
+  const { filters, priceRange } = use(facets);
   return <CollectionFilterSidebar filters={filters} priceRange={priceRange} />;
 }
 

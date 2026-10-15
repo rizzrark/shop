@@ -1,15 +1,7 @@
-"use server";
-
-import { refresh } from "next/cache";
-import { unstable_rethrow } from "next/navigation";
+import { isNotFound, isRedirect } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 
 import type { CustomerAddressInput } from "@/lib/customer/types";
-import {
-  createCustomerAddress,
-  deleteCustomerAddress,
-  updateCustomerAddress,
-  updateCustomerProfile,
-} from "@/lib/shopify/operations/customer/server";
 import { type CustomerUserError } from "@/lib/shopify/operations/customer/types";
 
 import type { AccountActionResult } from "./types";
@@ -32,7 +24,6 @@ const ADDRESS_FIELDS = [
 
 const UPPERCASE_FIELDS = new Set<keyof CustomerAddressInput>(["countryCode", "zoneCode"]);
 
-// Customer Account API field paths end with the form field to highlight.
 function mapUserErrors(errors: CustomerUserError[]): AccountActionResult {
   if (errors.length === 0) return { success: true };
 
@@ -73,61 +64,59 @@ async function runCustomerMutation(
   failureMessage: string,
 ): Promise<AccountActionResult> {
   try {
-    const result = mapUserErrors(await mutate());
-    if (result.success) refresh();
-    return result;
+    return mapUserErrors(await mutate());
   } catch (error) {
-    unstable_rethrow(error);
+    if (isRedirect(error) || isNotFound(error)) throw error;
     console.error(`${failureMessage}:`, error);
     return { success: false, error: failureMessage };
   }
 }
 
-export async function createAddressAction(
-  raw: CustomerAddressInput,
-  isDefault: boolean,
-): Promise<AccountActionResult> {
-  const input = buildAddressInput(raw);
-  const validationError = validateAddress(input);
-  if (validationError) return { success: false, error: validationError };
+export const createAddressAction = createServerFn({ method: "POST" })
+  .validator((data: { isDefault: boolean; raw: CustomerAddressInput }) => data)
+  .handler(async ({ data }): Promise<AccountActionResult> => {
+    const input = buildAddressInput(data.raw);
+    const validationError = validateAddress(input);
+    if (validationError) return { success: false, error: validationError };
+    const { createCustomerAddress } = await import("@/lib/shopify/operations/customer/server");
+    return runCustomerMutation(
+      () => createCustomerAddress(input, data.isDefault),
+      "Failed to create address",
+    );
+  });
 
-  return runCustomerMutation(
-    () => createCustomerAddress(input, isDefault),
-    "Failed to create address",
-  );
-}
+export const updateAddressAction = createServerFn({ method: "POST" })
+  .validator((data: { addressId: string; isDefault: boolean; raw: CustomerAddressInput }) => data)
+  .handler(async ({ data }): Promise<AccountActionResult> => {
+    if (!data.addressId) return { success: false, error: "Invalid address ID" };
+    const input = buildAddressInput(data.raw);
+    const validationError = validateAddress(input);
+    if (validationError) return { success: false, error: validationError };
+    const { updateCustomerAddress } = await import("@/lib/shopify/operations/customer/server");
+    return runCustomerMutation(
+      () => updateCustomerAddress(data.addressId, input, data.isDefault),
+      "Failed to update address",
+    );
+  });
 
-export async function updateAddressAction(
-  addressId: string,
-  raw: CustomerAddressInput,
-  isDefault: boolean,
-): Promise<AccountActionResult> {
-  if (!addressId) return { success: false, error: "Invalid address ID" };
+export const deleteAddressAction = createServerFn({ method: "POST" })
+  .validator((data: { addressId: string }) => data)
+  .handler(async ({ data }): Promise<AccountActionResult> => {
+    if (!data.addressId) return { success: false, error: "Invalid address ID" };
+    const { deleteCustomerAddress } = await import("@/lib/shopify/operations/customer/server");
+    return runCustomerMutation(
+      () => deleteCustomerAddress(data.addressId),
+      "Failed to delete address",
+    );
+  });
 
-  const input = buildAddressInput(raw);
-  const validationError = validateAddress(input);
-  if (validationError) return { success: false, error: validationError };
-
-  return runCustomerMutation(
-    () => updateCustomerAddress(addressId, input, isDefault),
-    "Failed to update address",
-  );
-}
-
-export async function deleteAddressAction(addressId: string): Promise<AccountActionResult> {
-  if (!addressId) return { success: false, error: "Invalid address ID" };
-
-  return runCustomerMutation(() => deleteCustomerAddress(addressId), "Failed to delete address");
-}
-
-export async function updateProfileAction(raw: {
-  firstName: string;
-  lastName: string;
-}): Promise<AccountActionResult> {
-  const input = {
-    firstName: raw.firstName.trim().slice(0, MAX_NAME_LENGTH),
-    lastName: raw.lastName.trim().slice(0, MAX_NAME_LENGTH),
-  };
-
-  return runCustomerMutation(() => updateCustomerProfile(input), "Failed to update profile");
-}
+export const updateProfileAction = createServerFn({ method: "POST" })
+  .validator((data: { firstName: string; lastName: string }) => data)
+  .handler(async ({ data }): Promise<AccountActionResult> => {
+    const input = {
+      firstName: data.firstName.trim().slice(0, MAX_NAME_LENGTH),
+      lastName: data.lastName.trim().slice(0, MAX_NAME_LENGTH),
+    };
+    const { updateCustomerProfile } = await import("@/lib/shopify/operations/customer/server");
+    return runCustomerMutation(() => updateCustomerProfile(input), "Failed to update profile");
+  });

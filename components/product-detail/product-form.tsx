@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ProductInfoOptions } from "@/components/product-detail/product-info";
 import { ProductPrice } from "@/components/product-detail/product-price";
+import { useRouter, useSearchParams } from "@/lib/navigation/client";
 import { buildProductUrl } from "@/lib/product";
 import { ProductProvider, useProduct } from "@/lib/product/client";
 import type {

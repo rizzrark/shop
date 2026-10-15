@@ -1,6 +1,6 @@
 import type { ProductRecommendationIntent } from "@shopify/hydrogen/storefront-api-types";
-import { cacheLife, cacheTag } from "next/cache";
 
+import { cacheKey, cacheTag, withCache } from "@/lib/cache/server";
 import type { CommerceLocale } from "@/lib/config/types";
 import type { ProductCard, ProductDetails, ProductPage } from "@/lib/product/types";
 import { getNumericShopifyId } from "@/lib/shopify/id/server";
@@ -11,7 +11,6 @@ import {
 } from "@/lib/shopify/operations/products/server";
 import type { SearchIndexProductsParams } from "@/lib/shopify/operations/products/types";
 
-// Only valid inside a cache directive scope.
 export function tagProducts(products: Array<{ id: string }>): void {
   for (const product of products) {
     const numericId = getNumericShopifyId(product.id);
@@ -23,26 +22,32 @@ export async function getProduct(params: {
   handle: string;
   locale?: CommerceLocale;
 }): Promise<ProductDetails | undefined> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag("products", `product-${params.handle}`);
-
-  const product = await fetchProduct(params);
-  if (product) tagProducts([product]);
-  return product;
+  return withCache(
+    cacheKey("product", params),
+    "max",
+    ["products", `product-${params.handle}`],
+    async () => {
+      const product = await fetchProduct(params);
+      if (product) tagProducts([product]);
+      return product;
+    },
+  );
 }
 
 // Cursor-paginated browse reads stay uncached in lib/collections/server.ts; this serves fixed grids only.
 export async function getSearchIndexProducts(
   params: SearchIndexProductsParams,
 ): Promise<ProductPage> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag("products", "products-index");
-
-  const result = await fetchSearchIndexProducts(params);
-  tagProducts(result.products);
-  return result;
+  return withCache(
+    cacheKey("search-index-products", params),
+    "max",
+    ["products", "products-index"],
+    async () => {
+      const result = await fetchSearchIndexProducts(params);
+      tagProducts(result.products);
+      return result;
+    },
+  );
 }
 
 export async function getProductRecommendations(params: {
@@ -50,11 +55,14 @@ export async function getProductRecommendations(params: {
   intent: ProductRecommendationIntent;
   locale?: CommerceLocale;
 }): Promise<ProductCard[]> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag("products", `recommendations-${params.handle}`);
-
-  const products = await fetchProductRecommendations(params);
-  tagProducts(products);
-  return products;
+  return withCache(
+    cacheKey("product-recommendations", params),
+    "max",
+    ["products", `recommendations-${params.handle}`],
+    async () => {
+      const products = await fetchProductRecommendations(params);
+      tagProducts(products);
+      return products;
+    },
+  );
 }

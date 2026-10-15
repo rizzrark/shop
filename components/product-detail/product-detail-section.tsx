@@ -39,16 +39,18 @@ import {
   toStaticOptionGroups,
 } from "@/lib/product";
 import { type SelectedOptions } from "@/lib/product/types";
-import type { ProductDetails, ProductVariant } from "@/lib/product/types";
+import type { ProductCard, ProductDetails, ProductVariant } from "@/lib/product/types";
 
 export function ProductDetailSection({
+  complementary,
   product,
-  selectedOptionsPromise,
-  variantPromise,
+  selectedOptions,
+  variant,
 }: {
+  complementary: ProductCard[];
   product: ProductDetails;
-  selectedOptionsPromise: Promise<SelectedOptions>;
-  variantPromise: Promise<ProductVariant | undefined>;
+  selectedOptions: SelectedOptions;
+  variant: ProductVariant | undefined;
 }) {
   return (
     <>
@@ -77,8 +79,8 @@ export function ProductDetailSection({
         ]}
       />
       <div className="grid gap-10 lg:grid-cols-10 lg:items-start lg:gap-5">
-        <ProductMediaArea product={product} selectedOptionsPromise={selectedOptionsPromise} />
-        <ProductInfoArea product={product} variantPromise={variantPromise} />
+        <ProductMediaArea product={product} selectedOptions={selectedOptions} />
+        <ProductInfoArea complementary={complementary} product={product} variant={variant} />
       </div>
     </>
   );
@@ -86,10 +88,10 @@ export function ProductDetailSection({
 
 function ProductMediaArea({
   product,
-  selectedOptionsPromise,
+  selectedOptions,
 }: {
   product: ProductDetails;
-  selectedOptionsPromise: Promise<SelectedOptions>;
+  selectedOptions: SelectedOptions;
 }) {
   if (!hasColorImagePartitioning(product.options)) {
     return (
@@ -111,10 +113,7 @@ function ProductMediaArea({
       desktopSlot={
         // Color image is the LCP slot; a pulsing skeleton flashes harder than an empty image canvas.
         <Suspense fallback={<div className="aspect-square w-full" />}>
-          <ResolvedColorImageGrid
-            product={product}
-            selectedOptionsPromise={selectedOptionsPromise}
-          />
+          <ResolvedColorImageGrid product={product} selectedOptions={selectedOptions} />
         </Suspense>
       }
       mobileSlot={
@@ -123,48 +122,47 @@ function ProductMediaArea({
             <div className="relative shrink-0 w-full snap-start snap-always overflow-hidden aspect-square" />
           }
         >
-          <ResolvedColorImageCarousel
-            product={product}
-            selectedOptionsPromise={selectedOptionsPromise}
-          />
+          <ResolvedColorImageCarousel product={product} selectedOptions={selectedOptions} />
         </Suspense>
       }
     />
   );
 }
 
-async function ResolvedColorImageGrid({
+function ResolvedColorImageGrid({
   product,
-  selectedOptionsPromise,
+  selectedOptions,
 }: {
   product: ProductDetails;
-  selectedOptionsPromise: Promise<SelectedOptions>;
+  selectedOptions: SelectedOptions;
 }) {
-  const image = getSelectedColorImage(product, await selectedOptionsPromise);
+  const image = getSelectedColorImage(product, selectedOptions);
   if (!image) return null;
   return <ColorImageGrid images={[image]} title={product.title} />;
 }
 
-async function ResolvedColorImageCarousel({
+function ResolvedColorImageCarousel({
   product,
-  selectedOptionsPromise,
+  selectedOptions,
 }: {
   product: ProductDetails;
-  selectedOptionsPromise: Promise<SelectedOptions>;
+  selectedOptions: SelectedOptions;
 }) {
-  const image = getSelectedColorImage(product, await selectedOptionsPromise);
+  const image = getSelectedColorImage(product, selectedOptions);
   if (!image) return null;
   return <ColorImageCarouselItems images={[image]} title={product.title} />;
 }
 
 function ProductInfoArea({
+  complementary,
   product,
-  variantPromise,
+  variant,
 }: {
+  complementary: ProductCard[];
   product: ProductDetails;
-  variantPromise: Promise<ProductVariant | undefined>;
+  variant: ProductVariant | undefined;
 }) {
-  const { options, handle, descriptionHtml } = product;
+  const { options, descriptionHtml } = product;
   const uniformStock = product.allVariantsInStock;
   const singleVariant = product.variantsCount === 1;
   const showBuyLabel = uniformStock && !singleVariant;
@@ -192,7 +190,7 @@ function ProductInfoArea({
             priceSlot={
               !product.hasUniformPricing ? (
                 <Suspense fallback={<div className="h-7" aria-hidden />}>
-                  <ResolvedProductPrice variantPromise={variantPromise} />
+                  <ResolvedProductPrice variant={variant} />
                 </Suspense>
               ) : undefined
             }
@@ -210,7 +208,7 @@ function ProductInfoArea({
               />
             }
           >
-            <ResolvedProductInfo product={product} variantPromise={variantPromise} />
+            <ResolvedProductInfo product={product} variant={variant} />
           </Suspense>
         )}
       </div>
@@ -220,7 +218,7 @@ function ProductInfoArea({
       ) : null}
 
       {!product.isGiftCard && shopConfig.pdp.complementaryProducts.isEnabled ? (
-        <ComplementaryProducts handle={handle} limit={4} title="Pairs Well With" />
+        <ComplementaryProducts limit={4} products={complementary} title="Pairs Well With" />
       ) : null}
 
       <ProductInfoDescription descriptionHtml={descriptionHtml} />
@@ -228,12 +226,7 @@ function ProductInfoArea({
   );
 }
 
-async function ResolvedProductPrice({
-  variantPromise,
-}: {
-  variantPromise: Promise<ProductVariant | undefined>;
-}) {
-  const variant = await variantPromise;
+function ResolvedProductPrice({ variant }: { variant: ProductVariant | undefined }) {
   return (
     <ProductFormPrice
       fallbackVariant={
@@ -243,14 +236,14 @@ async function ResolvedProductPrice({
   );
 }
 
-async function ResolvedProductInfo({
+function ResolvedProductInfo({
   product,
-  variantPromise,
+  variant,
 }: {
   product: ProductDetails;
-  variantPromise: Promise<ProductVariant | undefined>;
+  variant: ProductVariant | undefined;
 }) {
-  return <ProductInfoContent product={product} selectedVariant={await variantPromise} />;
+  return <ProductInfoContent product={product} selectedVariant={variant} />;
 }
 
 // The store is seeded from the URL-resolved variant so server HTML and client state agree on first paint.

@@ -21,7 +21,7 @@
   ],
   "tasks": {
     "build": {
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".output/**", "dist/**"]
     },
     "dev": {
       "cache": false,

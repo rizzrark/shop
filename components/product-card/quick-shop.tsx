@@ -60,7 +60,9 @@ export function QuickShop({ handle, href, image, label, title }: QuickShopProps)
     selectionRequest.current = request;
     setSelectionStatus("loading");
     try {
-      const loaded = await loadQuickShopProductAction(handle, request.selectedOptions);
+      const loaded = await loadQuickShopProductAction({
+        data: { handle, selectedOptions: request.selectedOptions },
+      });
       if (selectionRequest.current !== request) return;
       if (!loaded) {
         setSelectionStatus("unavailable");
@@ -113,7 +115,7 @@ export function QuickShop({ handle, href, image, label, title }: QuickShopProps)
     if (product || status === "loading") return;
     setStatus("loading");
     try {
-      const loaded = await loadQuickShopProductAction(handle);
+      const loaded = await loadQuickShopProductAction({ data: { handle } });
       setProduct(loaded);
       if (loaded) {
         setConfirmedVariant(loaded.form.selectedOrFirstAvailableVariant ?? undefined);

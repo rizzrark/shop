@@ -1,14 +1,11 @@
 import { UserRoundCheckIcon, UserRoundIcon } from "lucide-react";
 
 import { Link } from "@/components/ui/link";
-import { isCustomerLoggedIn } from "@/lib/auth/server";
 
-export async function NavAccount() {
-  const loggedIn = await isCustomerLoggedIn();
+export function NavAccount({ loggedIn }: { loggedIn: boolean }) {
   if (!loggedIn) {
     // Sign-in must be a full document navigation; the proxy auth route issues an OAuth redirect and must never be prefetched.
     return (
-      // eslint-disable-next-line next/no-html-link-for-pages
       <a
         href="/account/login"
         className="flex items-center justify-center text-foreground hover:text-foreground/80 transition-colors"

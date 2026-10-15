@@ -1,6 +1,5 @@
-import { cacheLife, cacheTag } from "next/cache";
-
 import type { Blog, BlogArticle } from "@/lib/blog/types";
+import { cacheKey, withCache } from "@/lib/cache/server";
 import type { CommerceLocale } from "@/lib/config/types";
 import { fetchBlog, fetchBlogArticle } from "@/lib/shopify/operations/blogs/server";
 
@@ -9,11 +8,12 @@ export async function getBlog(params: {
   limit?: number;
   locale?: CommerceLocale;
 }): Promise<Blog | undefined> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag("articles", "blogs", `blog-${params.handle}`);
-
-  return fetchBlog(params);
+  return withCache(
+    cacheKey("blog", params),
+    "max",
+    ["articles", "blogs", `blog-${params.handle}`],
+    () => fetchBlog(params),
+  );
 }
 
 export async function getBlogArticle(params: {
@@ -21,14 +21,15 @@ export async function getBlogArticle(params: {
   blogHandle: string;
   locale?: CommerceLocale;
 }): Promise<BlogArticle | undefined> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag(
-    "articles",
-    "blogs",
-    `article-${params.blogHandle}-${params.articleHandle}`,
-    `blog-${params.blogHandle}`,
+  return withCache(
+    cacheKey("blog-article", params),
+    "max",
+    [
+      "articles",
+      "blogs",
+      `article-${params.blogHandle}-${params.articleHandle}`,
+      `blog-${params.blogHandle}`,
+    ],
+    () => fetchBlogArticle(params),
   );
-
-  return fetchBlogArticle(params);
 }

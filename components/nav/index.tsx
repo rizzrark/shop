@@ -1,18 +1,18 @@
 import { PredictiveSearchProvider } from "@shopify/hydrogen/react";
-import { Suspense } from "react";
 
 import { Container } from "@/components/ui/container";
 import { Link } from "@/components/ui/link";
+import type { Cart } from "@/lib/cart/types";
 import { shopConfig } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu/types";
 
-import { NavAccount, NavAccountFallback } from "./account";
-import { CartIcon, CartIconFallback } from "./cart";
+import { NavAccount } from "./account";
+import { CartIcon } from "./cart";
 import { MobileMenu } from "./mobile-menu";
 import { QuickLinks } from "./quick-links";
 import { SearchModal } from "./search-modal";
 
-export function Nav() {
+export function Nav({ cart, loggedIn }: { cart: Cart | null; loggedIn: boolean }) {
   const items: MenuItem[] = [
     { id: "default-nav-shop", items: [], title: "Shop", url: "/collections/all" },
   ];
@@ -40,14 +40,8 @@ export function Nav() {
               <SearchModal />
             </PredictiveSearchProvider>
           )}
-          {shopConfig.auth.isEnabled && (
-            <Suspense fallback={<NavAccountFallback />}>
-              <NavAccount />
-            </Suspense>
-          )}
-          <Suspense fallback={<CartIconFallback />}>
-            <CartIcon />
-          </Suspense>
+          {shopConfig.auth.isEnabled && <NavAccount loggedIn={loggedIn} />}
+          <CartIcon cart={cart} />
         </div>
       </Container>
     </nav>

@@ -2,11 +2,11 @@
 
 import type { AnalyticsCart, CollectionViewPayload, ProductPayload } from "@shopify/hydrogen";
 import type { MoneyV2 } from "@shopify/hydrogen/storefront-api-types";
-import { usePathname, useSearchParams } from "next/navigation";
 import { use, useEffect, useRef } from "react";
 
 import { AnalyticsEvent, getAnalytics } from "@/lib/analytics/client";
 import { useCart } from "@/lib/cart/client";
+import { usePathname, useSearchParams } from "@/lib/navigation/client";
 import type { ProductDetails, ProductVariant } from "@/lib/product/types";
 
 export function CartViewedTracker() {

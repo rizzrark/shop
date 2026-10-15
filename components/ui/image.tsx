@@ -35,8 +35,6 @@ export function Image({
   }
 
   return (
-    // Shopify CDN srcset replaces the Next.js image optimizer.
-    // oxlint-disable-next-line next/no-img-element
     <img
       {...props}
       alt={alt}

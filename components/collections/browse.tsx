@@ -1,4 +1,4 @@
-import { type ReactNode, Suspense } from "react";
+import { type ReactNode, use } from "react";
 
 import { ProductCard } from "@/components/product-card/product-card";
 import { ProductsGridSkeleton } from "@/components/product/products-grid";
@@ -13,9 +13,9 @@ import { BrowseToolbar } from "./toolbar";
 interface BrowseProps {
   path: string;
   resultCount?: ReactNode;
-  results: Promise<BrowseResults>;
+  results: BrowseResults;
   sortExclude?: SortValue[];
-  state: Promise<BrowseState>;
+  state: BrowseState;
   storeKey: string;
 }
 
@@ -31,13 +31,11 @@ export function Browse({ path, resultCount, results, sortExclude, state, storeKe
   return (
     <CollectionBrowseProvider handle={storeKey} path={path} state={state}>
       <BrowseToolbar
-        filters={<CollectionFilters facets={results.then(({ facets }) => facets)} />}
+        filters={<CollectionFilters facets={results.facets} />}
         resultCount={resultCount}
         sortExclude={sortExclude}
       />
-      <Suspense fallback={<BrowseResultsFallback />}>
-        <StreamedResultsGrid results={results} />
-      </Suspense>
+      <BrowseResultsGrid results={results} />
     </CollectionBrowseProvider>
   );
 }
@@ -52,18 +50,14 @@ export function BrowseResultsFallback() {
 }
 
 // Renders a collection page's grid under the layout's CollectionBrowseFrame and hands its facets and data search to the layout's toolbar.
-export async function CollectionResults({ results }: CollectionResultsProps) {
-  const resolved = await results;
+export function CollectionResults({ results }: CollectionResultsProps) {
+  const resolved = results instanceof Promise ? use(results) : results;
   return (
     <>
       <BrowsePublisher dataSearch={resolved.dataSearch} facets={resolved.facets} />
       <BrowseResultsGrid results={resolved} />
     </>
   );
-}
-
-async function StreamedResultsGrid({ results }: { results: Promise<BrowseResults> }) {
-  return <BrowseResultsGrid results={await results} />;
 }
 
 function BrowseResultsGrid({ results }: BrowseResultsGridProps) {

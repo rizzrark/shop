@@ -1,0 +1,57 @@
+import { createFileRoute } from "@tanstack/react-router";
+
+import { CollectionCard } from "@/components/collections/collection-card";
+import { Container } from "@/components/ui/container";
+import { Page } from "@/components/ui/page";
+import { Sections } from "@/components/ui/sections";
+import { loadCollections } from "@/lib/data/server-fn";
+import { buildAlternates, buildOpenGraph } from "@/lib/seo";
+import { metadataHead } from "@/lib/seo/head";
+
+export const Route = createFileRoute("/collections/")({
+  head: () => {
+    const title = "Collections";
+    const description = "Browse products by collection.";
+    return metadataHead({
+      alternates: buildAlternates({ pathname: "/collections" }),
+      description,
+      openGraph: buildOpenGraph({ description, title, type: "website", url: "/collections" }),
+      title,
+      twitter: {
+        card: "summary_large_image",
+        description,
+        images: ["/og-default.png"],
+        title,
+      },
+    });
+  },
+  loader: () => loadCollections(),
+  component: CollectionsPage,
+});
+
+function CollectionsPage() {
+  const collections = Route.useLoaderData();
+  const viewCollectionLabel = "View this collection";
+  return (
+    <Page className="pt-2.5 md:pt-10">
+      <Container>
+        <Sections className="gap-5">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl">Collections</h1>
+          {collections.length > 0 ? (
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+              {collections.map((collection) => (
+                <CollectionCard
+                  key={collection.handle}
+                  collection={collection}
+                  viewCollectionLabel={viewCollectionLabel}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No collections found.</p>
+          )}
+        </Sections>
+      </Container>
+    </Page>
+  );
+}
