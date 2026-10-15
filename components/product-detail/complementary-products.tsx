@@ -1,6 +1,5 @@
-import Image from "next/image";
-
 import { Price } from "@/components/product/price";
+import { Image } from "@/components/ui/image";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import { Link } from "@/components/ui/link";
 import { getProductRecommendations } from "@/lib/product/server";

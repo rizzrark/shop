@@ -1,9 +1,9 @@
 import { cn } from "cn";
-import Image from "next/image";
 import type { ComponentProps, ReactNode } from "react";
 
 import { DiscountBadge } from "@/components/product/discount-badge";
 import { Price } from "@/components/product/price";
+import { Image } from "@/components/ui/image";
 import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 
 function ProductCard({ className, children, ...props }: ComponentProps<"article">) {

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -10,6 +9,7 @@ import {
 import { AccountPageHeader } from "@/components/account/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Image } from "@/components/ui/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { OrderLineItem } from "@/lib/customer/types";
 import { formatPrice } from "@/lib/money";

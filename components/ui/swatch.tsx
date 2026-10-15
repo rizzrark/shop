@@ -1,6 +1,7 @@
 import { cn } from "cn";
-import Image from "next/image";
 import type { ComponentProps } from "react";
+
+import { Image } from "@/components/ui/image";
 
 interface SwatchProps extends ComponentProps<"span"> {
   color?: string;
