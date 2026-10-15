@@ -6,6 +6,7 @@
   },
   "ignorePatterns": [
     ".next/**",
+    ".output/**",
     "dist/**",
     "build/**",
     ".agents/**",
