@@ -3,6 +3,7 @@ import type { ProductFilter } from "@shopify/hydrogen";
 import type {
   ProductCollectionSortKeys,
   ProductRecommendationIntent,
+  ProductSortKeys,
   SearchSortKeys,
 } from "@shopify/hydrogen/storefront-api-types";
 
@@ -339,6 +340,69 @@ function buildSearchQuery(query: string | undefined): string {
   return query?.trim() || "*";
 }
 
+function isCatalogListing(query: string | undefined, filters: ProductFilter[]): boolean {
+  return filters.length === 0 && !query?.trim();
+}
+
+// A match-all `search` of "*" is empty on some catalogs; `products` still lists them.
+let catalogSearchListsProducts: boolean | undefined;
+
+const CATALOG_PRODUCTS_QUERY = gql(
+  `#graphql
+  query catalogProducts($first: Int!, $after: String, $sortKey: ProductSortKeys, $reverse: Boolean, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+    products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+      edges {
+        cursor
+        node {
+          ...FilterableProductCardFields
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+    }
+  }
+`,
+  [FILTERABLE_PRODUCT_CARD_FRAGMENT],
+);
+
+function toCatalogSort(sortBy: string | undefined): {
+  reverse: boolean;
+  sortKey?: ProductSortKeys;
+} {
+  const parsed = sortBy ? parseSortByValue(sortBy) : undefined;
+  return parsed?.sortKey === "PRICE"
+    ? { reverse: parsed.reverse, sortKey: "PRICE" }
+    : { reverse: false };
+}
+
+async function fetchCatalogProducts(params: {
+  cursor?: string;
+  limit: number;
+  locale: CommerceLocale;
+  sortKey?: string;
+}): Promise<ProductPage> {
+  const sort = toCatalogSort(params.sortKey);
+  const response = await storefront.request(CATALOG_PRODUCTS_QUERY, {
+    locale: params.locale,
+    variables: {
+      after: params.cursor,
+      first: params.limit,
+      reverse: sort.reverse,
+      ...(sort.sortKey ? { sortKey: sort.sortKey } : {}),
+    },
+  });
+  assertStorefrontOk(response, "catalogProducts");
+  const { products } = response.data;
+  return {
+    pageInfo: products.pageInfo,
+    products: products.edges.map((edge) => transformFilteredShopifyProductCard(edge.node)),
+  };
+}
+
 // `products` drops variant/metafield filters, so /search must use the `search` field.
 export async function fetchSearchIndexProducts(
   params: SearchIndexProductsParams,
@@ -351,6 +415,10 @@ export async function fetchSearchIndexProducts(
     query,
     sortKey: sortBy,
   } = params;
+  const catalogListing = isCatalogListing(query, filters);
+  if (catalogListing && catalogSearchListsProducts === false) {
+    return fetchCatalogProducts({ cursor, limit, locale, sortKey: sortBy });
+  }
   const sort = toSearchSort(sortBy);
   const response = await storefront.request(PRODUCTS_SEARCH_QUERY, {
     locale,
@@ -369,12 +437,21 @@ export async function fetchSearchIndexProducts(
     edge.node.__typename === "Product" ? [edge.node] : [],
   );
   const selectedColor = getSelectedColorFilterLabel(filters, data.search.productFilters);
-  return {
+  const page: ProductPage = {
     pageInfo: data.search.pageInfo,
     products: shopifyProducts.map((product) =>
       transformFilteredShopifyProductCard(product, selectedColor),
     ),
   };
+  if (!catalogListing) return page;
+  if (page.products.length > 0) {
+    catalogSearchListsProducts = true;
+    return page;
+  }
+  if (cursor || catalogSearchListsProducts === true) return page;
+  const catalog = await fetchCatalogProducts({ limit, locale, sortKey: sortBy });
+  if (catalog.products.length > 0) catalogSearchListsProducts = false;
+  return catalog.products.length > 0 ? catalog : page;
 }
 
 const SEARCH_FACETS_QUERY = gql(
