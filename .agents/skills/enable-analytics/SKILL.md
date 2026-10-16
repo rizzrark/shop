@@ -66,11 +66,9 @@ For older storefronts, create or update the root analytics component described b
 
 Skip this section if the user did not want GTM.
 
-### B1. Install dependency
+### B1. Do not add a Next package
 
-```bash
-pnpm add @next/third-parties
-```
+The storefront has no Next runtime. Do not install `@next/third-parties`. Render Google Tag Manager from `components/analytics/index.tsx` when `NEXT_PUBLIC_GTM_ID` is set.
 
 ### B2. Add environment variable
 
@@ -84,7 +82,7 @@ Add `NEXT_PUBLIC_GTM_ID` to `turbo.json` `globalEnv`, keeping it alphabetical; T
 
 ### B3. Add GTM to `components/analytics/index.tsx`
 
-Import `GoogleTagManager` from `@next/third-parties/google`. Read `NEXT_PUBLIC_GTM_ID` in the analytics component and render `<GoogleTagManager gtmId={gtmId} />` only when the value exists. If the storefront extends `lib/config/index.ts` with a GTM integration gate, apply that gate inside the same component.
+Read `NEXT_PUBLIC_GTM_ID` in the analytics component and render the tag only when the value exists. If the storefront extends `lib/config/index.ts` with a GTM integration gate, apply that gate inside the same component.
 
 ---
 
@@ -96,9 +94,8 @@ Extend the existing root analytics component. Do not create a sibling `component
 
 ```tsx
 import type { ShopifyScriptsI18n, ShopifyScriptsShop } from "@shopify/hydrogen";
-import { GoogleTagManager } from "@next/third-parties/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import { isShopifyScriptsEnabled, shopConfig } from "@/lib/config";
 
@@ -120,7 +117,7 @@ export function AnalyticsComponents() {
     <>
       {shopConfig.analytics.vercel.isEnabled ? <Analytics /> : null}
       {shopConfig.analytics.speedInsights.isEnabled ? <SpeedInsights /> : null}
-      {gtmId ? <GoogleTagManager gtmId={gtmId} /> : null}
+      {gtmId ? <GoogleTagManagerSnippet gtmId={gtmId} /> : null}
       {isShopifyScriptsEnabled && <ShopifyScriptsTracker i18n={i18n} shop={shop} />}
     </>
   );
@@ -129,9 +126,11 @@ export function AnalyticsComponents() {
 
 Remove imports for integrations the storefront does not support.
 
-### C2. Update `app/layout.tsx`
+`GoogleTagManagerSnippet` is a local component in this file. It loads the container for `gtmId`. Do not import it from `@next/third-parties`.
 
-Render the root analytics component near the end of `<body>`. The default has inline component copy, not a translation provider; in an already localized installation, preserve its scoped translation-provider boundaries:
+### C2. Keep the root mount
+
+`src/routes/__root.tsx` already renders `AnalyticsComponents` inside `Suspense` after the page outlet. Leave that mount. The default has inline component copy, not a translation provider; in an already localized installation, preserve its scoped translation-provider boundaries:
 
 ```tsx
 import { AnalyticsComponents } from "@/components/analytics";
@@ -161,8 +160,8 @@ Third-party analytics can subscribe through the same destination API, so consent
 ## Guardrails
 
 - Keep root analytics providers and their gates in `components/analytics/index.tsx`; mount Shopify scripts when Shopify analytics, consent, or WebMCP is enabled.
-- Always mount `<AnalyticsComponents />` from the root layout, even when every provider is disabled.
+- Always mount `<AnalyticsComponents />` from `src/routes/__root.tsx`, even when every provider is disabled.
 - The GTM container ID must come from `NEXT_PUBLIC_GTM_ID`, never hardcoded. The provider renders nothing if the env var is missing.
-- Use `@next/third-parties/google` for GTM, not a manual `<script>` tag. The Next.js component handles script loading and performance optimization.
-- Import paths: use `@vercel/analytics/next` and `@vercel/speed-insights/next` (the `/next` subpath), not the root package exports.
+- Do not add `@next/third-parties`. Load Google Tag Manager from the analytics component.
+- Import `@vercel/analytics/react` and `@vercel/speed-insights/react`.
 - Add `NEXT_PUBLIC_GTM_ID` to `.env.example` with a placeholder value so other developers know the variable exists.

@@ -1,6 +1,6 @@
 ---
 name: init-vercel-shop
-description: Initialize a new Vercel Shop storefront from the vercel/shop template with create-next-app. Use when the user wants to create, scaffold, start, or initialize a Vercel Shop project from a coding agent.
+description: Start the Vercel Shop storefront. Use when the user wants to create, scaffold, start, or initialize this TanStack Start shop from a coding agent.
 ---
 
 # Initialize Vercel Shop
@@ -8,16 +8,17 @@ description: Initialize a new Vercel Shop storefront from the vercel/shop templa
 Ask for the target directory if the user did not provide one. Always pass it explicitly.
 
 1. Inspect the target. If it already contains a Vercel Shop project, stop and use the relevant storefront skill instead. If it is a non-empty directory, ask for a different target rather than overwriting files.
-2. Run:
+2. From the storefront root, with pnpm 12 and Node.js 24, install and start it:
 
    ```bash
-   pnpm create next-app@latest <target-directory> --example https://github.com/vercel/shop
+   pnpm install
+   pnpm dev
    ```
 
-   The template pins pnpm 12 and Node.js 24.
+   `pnpm build` runs `vite build`. `pnpm start` serves that build with `node .output/server/index.mjs`.
 
-3. Confirm the generated project contains `AGENTS.md`, `.agents/skills/`, `app/`, `components/`, `lib/shopify/`, and `package.json`.
-4. Read the generated `AGENTS.md` before making further changes.
+3. Confirm the project contains `AGENTS.md`, `.agents/skills/`, `src/routes/`, `src/start.ts`, `vite.config.ts`, `components/`, `lib/shopify/`, and `package.json`.
+4. Read `AGENTS.md` before making further changes.
 5. If dependency installation fails, keep the generated project and show the retry command to run from its root:
 
    ```bash

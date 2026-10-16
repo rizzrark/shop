@@ -1,11 +1,8 @@
-"use server";
+import { createServerFn } from "@tanstack/react-start";
 
-import { getCart } from "@/lib/cart/server";
-import { withFallback } from "@/lib/shopify/errors/server";
-
-export async function prepareCheckoutAction(): Promise<{
-  checkoutUrl: string | null;
-}> {
+export const prepareCheckoutAction = createServerFn({ method: "POST" }).handler(async () => {
+  const { getCart } = await import("@/lib/cart/server");
+  const { withFallback } = await import("@/lib/shopify/errors/server");
   const cart = await withFallback(getCart(), undefined);
   return { checkoutUrl: cart?.checkoutUrl ?? null };
-}
+});

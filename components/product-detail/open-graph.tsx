@@ -5,7 +5,7 @@ interface ProductOpenGraphProps {
   price: Money;
 }
 
-// Next Metadata cannot emit product `property=` tags, so React hoists these raw meta elements.
+// Document metadata has no product price or availability, so these tags render beside the product.
 export function ProductOpenGraph({ availableForSale, price }: ProductOpenGraphProps) {
   return (
     <>

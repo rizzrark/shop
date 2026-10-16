@@ -1,7 +1,6 @@
 "use client";
 
 import { Loader2, XIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart/client";
+import { useRouter } from "@/lib/navigation/client";
 
 import { useCartDrawer } from "./context";
 import { CartLineItems } from "./line-item";

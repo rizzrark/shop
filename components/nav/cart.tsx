@@ -1,13 +1,11 @@
 import { HandbagIcon } from "lucide-react";
 
-import { getCart } from "@/lib/cart/server";
-import { withFallback } from "@/lib/shopify/errors/server";
+import type { Cart } from "@/lib/cart/types";
 
 import { CartIconClient } from "./cart-client";
 
-export async function CartIcon() {
-  const cart = await withFallback(getCart(), undefined);
-  return <CartIconClient cartLabel="Cart" initialCart={cart ?? null} />;
+export function CartIcon({ cart }: { cart: Cart | null }) {
+  return <CartIconClient cartLabel="Cart" initialCart={cart} />;
 }
 
 export function CartIconFallback() {

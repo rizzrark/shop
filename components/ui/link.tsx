@@ -1,6 +1,6 @@
 "use client";
 
-import NextLink from "next/link";
+import { useRouter } from "@tanstack/react-router";
 import { type ComponentProps, type Ref, useEffect, useRef, useState } from "react";
 
 const HOVER_INTENT_DELAY_MS = 100;
@@ -12,8 +12,11 @@ interface Connection {
   saveData?: boolean;
 }
 
-interface LinkProps extends Omit<ComponentProps<typeof NextLink>, "prefetch"> {
-  prefetch?: ComponentProps<typeof NextLink>["prefetch"] | "intent";
+interface LinkProps extends Omit<ComponentProps<"a">, "href" | "prefetch"> {
+  href: string;
+  onNavigate?: () => void;
+  prefetch?: boolean | "auto" | "intent" | null;
+  scroll?: boolean;
 }
 
 const settleCandidates = new Set<HTMLAnchorElement>();
@@ -42,7 +45,7 @@ function canUpgrade(anchor: HTMLAnchorElement): boolean {
     const current = new URL(window.location.href);
     const destination = new URL(anchor.href);
 
-    // The root ensureStatic keeps per-link prefetches static, so search params resolve only on navigation and a same-path upgrade adds nothing.
+    // A same-path preload adds nothing, so intent preload runs only when the pathname changes.
     return (
       (destination.protocol === "http:" || destination.protocol === "https:") &&
       destination.origin === current.origin &&
@@ -124,9 +127,10 @@ function assignRef(ref: Ref<HTMLAnchorElement> | undefined, anchor: HTMLAnchorEl
 }
 
 export function Link({
-  as,
   href,
+  onNavigate,
   onBlur,
+  onClick,
   onFocus,
   onPointerCancel,
   onPointerDown,
@@ -134,9 +138,11 @@ export function Link({
   onPointerLeave,
   prefetch = "intent",
   ref,
+  scroll = true,
   ...props
 }: LinkProps) {
-  const destinationKey = JSON.stringify([href, as]);
+  const router = useRouter();
+  const destinationKey = href;
   const [intentDestination, setIntentDestination] = useState<string | null>(null);
   const anchorRef = useRef<HTMLAnchorElement | null>(null);
   const focused = useRef(false);
@@ -158,6 +164,7 @@ export function Link({
       timer.current = undefined;
       if (anchor.href === destination && canUpgrade(anchor)) {
         setIntentDestination(destinationKey);
+        preload(router, destinationPath(anchor));
       }
     }, HOVER_INTENT_DELAY_MS);
   }
@@ -165,8 +172,11 @@ export function Link({
   useEffect(() => {
     const anchor = anchorRef.current;
     if (prefetch !== "intent" || upgraded || !anchor || !isTouchPrimary()) return;
-    return observeSettleIntent(anchor, () => setIntentDestination(destinationKey));
-  }, [destinationKey, prefetch, upgraded]);
+    return observeSettleIntent(anchor, () => {
+      setIntentDestination(destinationKey);
+      preload(router, destinationPath(anchor));
+    });
+  }, [destinationKey, prefetch, router, upgraded]);
 
   useEffect(
     () => () => {
@@ -176,10 +186,31 @@ export function Link({
   );
 
   return (
-    <NextLink
+    <a
       {...props}
-      as={as}
       href={href}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
+        const anchor = event.currentTarget;
+        if (anchor.target && anchor.target.toLowerCase() !== "_self") return;
+        if (anchor.hasAttribute("download")) return;
+        let destination: URL;
+        try {
+          destination = new URL(anchor.href);
+        } catch {
+          return;
+        }
+        if (destination.origin !== window.location.origin) return;
+        onNavigate?.();
+        event.preventDefault();
+        const destinationHref = `${destination.pathname}${destination.search}${destination.hash}`;
+        void router.navigate({
+          href: destinationHref,
+          resetScroll: scroll,
+        } as Parameters<typeof router.navigate>[0]);
+      }}
       onBlur={(event) => {
         onBlur?.(event);
         focused.current = false;
@@ -223,7 +254,6 @@ export function Link({
         hovered.current = false;
         if (!focused.current) cancelPendingIntent();
       }}
-      prefetch={prefetch === "intent" ? (upgraded ? true : "auto") : prefetch}
       ref={(anchor) => {
         anchorRef.current = anchor;
         assignRef(ref, anchor);
@@ -234,4 +264,14 @@ export function Link({
       }}
     />
   );
+}
+
+function preload(router: ReturnType<typeof useRouter>, href: string) {
+  // Public links are concrete URLs. preloadRoute's typed `to` is the route template.
+  void router.preloadRoute({ href } as Parameters<typeof router.preloadRoute>[0]);
+}
+
+function destinationPath(anchor: HTMLAnchorElement): string {
+  const destination = new URL(anchor.href);
+  return `${destination.pathname}${destination.search}${destination.hash}`;
 }

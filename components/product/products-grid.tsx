@@ -1,9 +1,8 @@
 import { cn } from "cn";
-import { Suspense } from "react";
 
 import { ProductCard, ProductCardSkeleton } from "@/components/product-card/product-card";
 import { Link } from "@/components/ui/link";
-import { getSearchIndexProducts } from "@/lib/product/server";
+import type { ProductCard as ProductCardData } from "@/lib/product/types";
 
 interface ProductsGridSkeletonProps {
   count: number;
@@ -23,11 +22,16 @@ export function ProductsGridSkeleton({ count, className }: ProductsGridSkeletonP
 interface ProductsGridProps {
   collectionUrl?: string;
   eagerCount?: number;
-  limit: number;
+  products: ProductCardData[];
   title: string;
 }
 
-export function ProductsGrid({ collectionUrl, eagerCount = 0, limit, title }: ProductsGridProps) {
+export function ProductsGrid({
+  collectionUrl,
+  eagerCount = 0,
+  products,
+  title,
+}: ProductsGridProps) {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
@@ -41,27 +45,26 @@ export function ProductsGrid({ collectionUrl, eagerCount = 0, limit, title }: Pr
           </Link>
         )}
       </div>
-      <Suspense fallback={<ProductsGridSkeleton count={limit} />}>
-        <ProductsGridContent eagerCount={eagerCount} limit={limit} outOfStockText="Out of Stock" />
-      </Suspense>
+      {products.length === 0 ? null : (
+        <ProductsGridContent
+          eagerCount={eagerCount}
+          outOfStockText="Out of Stock"
+          products={products}
+        />
+      )}
     </div>
   );
 }
 
-async function ProductsGridContent({
+function ProductsGridContent({
   eagerCount,
-  limit,
   outOfStockText,
+  products,
 }: {
   eagerCount: number;
-  limit: number;
   outOfStockText: string;
+  products: ProductCardData[];
 }) {
-  // Use the search index (not the products connection) so these match the first items on /collections/all.
-  const { products } = await getSearchIndexProducts({
-    limit,
-  });
-  if (products.length === 0) return null;
   return (
     <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
       {products.map((product, index) => (

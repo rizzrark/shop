@@ -120,8 +120,7 @@ If you add fields, validate the document with the Shopify AI Toolkit first.
 Create `lib/menu/server.ts`:
 
 ```ts
-import { cacheLife, cacheTag } from "next/cache";
-
+import { cacheKey, cacheTag, withCache } from "@/lib/cache/server";
 import type { CommerceLocale } from "@/lib/config/types";
 import type { MenuItem } from "@/lib/menu/types";
 import { fetchMenu } from "@/lib/shopify/operations/menu/server";
@@ -130,37 +129,44 @@ export async function getMenu(params: {
   handle: string;
   locale?: CommerceLocale;
 }): Promise<MenuItem[] | null> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag("menus");
-
-  return fetchMenu(params);
+  return withCache(cacheKey("menu", params), "max", ["menus"], async () => {
+    cacheTag("menus");
+    return fetchMenu(params);
+  });
 }
 ```
 
 ## 3. Add the refresh endpoint
 
-Create `app/api/revalidate/menus/route.ts`. It returns `404` until `MENUS_REVALIDATE_SECRET` is set:
+Create `src/routes/api/revalidate/menus.ts`. It returns `404` until `MENUS_REVALIDATE_SECRET` is set. `revalidateTag` comes from `lib/cache/server.ts`.
 
 ```ts
 import crypto from "node:crypto";
 
-import { revalidateTag } from "next/cache";
+import { createFileRoute } from "@tanstack/react-router";
+
+import { revalidateTag } from "@/lib/cache/server";
 
 const MENUS_REVALIDATE_SECRET = process.env.MENUS_REVALIDATE_SECRET;
 
-export async function POST(request: Request) {
-  if (!MENUS_REVALIDATE_SECRET) return new Response(null, { status: 404 });
+export const Route = createFileRoute("/api/revalidate/menus")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        if (!MENUS_REVALIDATE_SECRET) return new Response(null, { status: 404 });
 
-  const expected = Buffer.from(`Bearer ${MENUS_REVALIDATE_SECRET}`);
-  const received = Buffer.from(request.headers.get("authorization") ?? "");
-  if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
+        const expected = Buffer.from(`Bearer ${MENUS_REVALIDATE_SECRET}`);
+        const received = Buffer.from(request.headers.get("authorization") ?? "");
+        if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-  revalidateTag("menus", { expire: 0 });
-  return Response.json({ revalidated: "menus" });
-}
+        revalidateTag("menus", { expire: 0 });
+        return Response.json({ revalidated: "menus" });
+      },
+    },
+  },
+});
 ```
 
 Add this row to the `# Optional` block of `.env.example`, keeping it alphabetical:

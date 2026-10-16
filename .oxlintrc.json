@@ -5,16 +5,15 @@
     "suspicious": "warn"
   },
   "ignorePatterns": [
-    ".next/**",
     ".output/**",
     "dist/**",
     "build/**",
     ".agents/**",
     ".claude/**",
-    "app/.well-known/**",
+    "src/routeTree.gen.ts",
     "components/ai-elements/**"
   ],
-  "plugins": ["typescript", "react", "nextjs"],
+  "plugins": ["typescript", "react"],
   "rules": {
     "no-underscore-dangle": ["warn", { "allow": ["__typename"] }],
     "no-unused-vars": "off",

@@ -18,14 +18,15 @@ Never duplicate Shopify API reference material here. Re-run Shopify validation w
 | `lib/shopify/customer-account/server.ts`   | Separate Customer Account API transport                                                               |
 | `lib/shopify/fragments/customer/index.ts`, `lib/shopify/fragments/customer-address/index.ts`, `lib/shopify/fragments/customer-order/index.ts` | Shared Customer Account selections |
 | `lib/shopify/fragments/<resource>/index.ts` | Shared Storefront selections grouped by resource                                                      |
-| `lib/shopify/operations/*/server.ts`               | Uncached `fetch*` Storefront operations and mutations; no `next/cache` imports                        |
-| `lib/<domain>/server.ts`                    | Cached `get*` wrappers owning `"use cache: remote"`, `cacheLife`, and `cacheTag` for rendered pages |
+| `lib/shopify/operations/*/server.ts`               | Uncached `fetch*` Storefront operations and mutations; no `lib/cache` imports                        |
+| `lib/<domain>/server.ts`                    | Cached `get*` wrappers owning `withCache` and `cacheTag` for rendered pages |
+| `lib/cache/server.ts`                       | Process-local cache; `minutes` expires in one hour, `max` expires in one year |
 | `lib/shopify/transforms/*/index.ts`               | Shopify response to domain mapping; input types derive from fragment documents                        |
 | `lib/shopify/types.ts`                     | Shared SDK-derived `ResultOf<Doc>`, `CustomerAccountResultOf<Doc>`, and response contracts               |
 | `lib/shopify/transforms/filters/types.ts`  | Fragment-derived filter response types and transform options                                          |
 | `lib/product/types.ts`, `lib/collections/types.ts`, `lib/customer/types.ts`, `lib/filters/types.ts`, `lib/menu/types.ts` | Domain-owned models consumed by transforms and presentation |
 | `lib/cart/server.ts`                        | Cart cookie helpers and server-side cart read seeding                                                 |
-| `app/api/webhooks/shopify/route.ts`         | Public-content invalidation entry point                                                               |
+| `src/routes/api/webhooks/shopify.ts`        | Public-content invalidation entry point                                                               |
 
 ## Data flow
 
@@ -34,7 +35,7 @@ Route → lib/<domain>/server.ts get* (cache) → lib/shopify/operations fetch* 
       ← domain type                          ← transform                       ← Shopify response
 ```
 
-Do not add an internal HTTP hop between a Server Component and `lib/shopify/operations/`. Catalog and account presentation use transformed domain types. Cart state is intentionally different: derive its types from Hydrogen handlers through `lib/cart/types.ts`, rather than maintaining a second cart model. Product selection adapts catalog models to Hydrogen's `ProductInput`; generic `ui/` primitives still accept primitive presentation props.
+Do not add an internal HTTP hop between a route loader and `lib/shopify/operations/`. Catalog and account presentation use transformed domain types. Cart state is intentionally different: derive its types from Hydrogen handlers through `lib/cart/types.ts`, rather than maintaining a second cart model. Product selection adapts catalog models to Hydrogen's `ProductInput`; generic `ui/` primitives still accept primitive presentation props.
 
 ## Documents
 
@@ -51,8 +52,8 @@ Shopify AI Toolkit validates documents; there is no local schema gate, and typec
 
 | Render role                                                                                                    | Treatment                                                             |
 | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Public catalog and content reads, including static shell content                                               | `"use cache: remote"` in the domain `get*` wrapper with the established `cacheLife` and tags |
-| Default first page of a collection or `/collections/all`, with its facets                                      | `"use cache: remote"` with `cacheLife("minutes")` and webhook tags    |
+| Public catalog and content reads, including the first response                                                 | `withCache` in the domain `get*` wrapper with the established lifetime and tags |
+| Default first page of a collection or `/collections/all`, with its facets                                      | `withCache(..., "minutes")` and webhook tags                          |
 | Filtered or sorted browse, Load more pages, search results, and their facets                                   | Uncached `fetch*` operations; no read-cache directive                 |
 | Cart, session, authorization, or Customer Account data                                                         | Uncached or private/request-scoped; never public remote cache         |
 | Mutation                                                                                                       | No read-cache directive; invalidate the affected domain after success |
@@ -61,14 +62,14 @@ Follow the closest existing operation with the same render role. Do not choose a
 
 Current examples of intent:
 
-- Product, collection, recommendation, blog, page, policy, and sitemap reads use `"use cache: remote"` in their `lib/<domain>/server.ts` wrapper, so every instance shares one cache in front of Shopify; remote reads still render into the static shell when the route prerenders.
+- Product, collection, recommendation, blog, page, policy, and sitemap reads use `withCache` in their `lib/<domain>/server.ts` wrapper, so every instance in the process shares one cache in front of Shopify.
 - The default first page of each collection and of `/collections/all` is cached for minutes in `lib/collections/server.ts`, tagged for product and collection webhooks.
 - Filtered or sorted browse, search results, facets, and cursor pages call the uncached `fetch*` operations directly from `lib/collections/server.ts` and `lib/search/server.ts`: cached cursor pages drift apart and duplicate boundary products, and Search & Discovery edits send no webhook.
 - Customer Account operations and cart reads remain customer/request scoped.
 
 ## Deployment context versus copy locale
 
-The fresh template reads explicit `{ country: "US", language: "EN", locale: "en-US" }` from `shopConfig.localization`. UI copy lives alongside its consuming components; reusable content functions live in `lib/content/index.ts`; there is no default next-intl layer or Server Component locale resolver. Inspect the transport and operation signatures before changing them: existing `locale` arguments and cache inputs can remain intentional. Do not reintroduce UI locale plumbing solely to call an operation.
+The fresh template reads explicit `{ country: "US", language: "EN", locale: "en-US" }` from `shopConfig.localization`. UI copy lives alongside its consuming components; reusable content functions live in `lib/content/index.ts`; there is no default next-intl layer or route-param locale resolver. Inspect the transport and operation signatures before changing them: existing `locale` arguments and cache inputs can remain intentional. Do not reintroduce UI locale plumbing solely to call an operation.
 
 Country/language scope Shopify commerce data; the formatting locale and translated UI copy are not an implicit market selection. Preserve validated request context in already localized or Markets-enabled stores rather than pinning them to deployment defaults. Currency always comes from Shopify responses.
 
@@ -84,8 +85,8 @@ Country/language scope Shopify commerce data; the formatting locale and translat
 
 - Reuse established product, collection, menu, recommendation, sitemap, and CMS tags; carts have no public cache tags.
 - Add a new tag only when the webhook or mutation path can invalidate it correctly.
-- Keep public-content tags aligned with `app/api/webhooks/shopify/route.ts`.
-- Never place carts in the Next.js data cache; cart reads are memoized per request via `getCart`, so cart mutations need no cache invalidation step.
+- Keep public-content tags aligned with `src/routes/api/webhooks/shopify.ts` and `lib/shopify/webhook/index.ts`.
+- Never place carts in the public catalog cache; cart reads are memoized per request via `getCart`, so cart mutations need no cache invalidation step.
 - Never rely on public cache invalidation for Customer Account privacy or authorization.
 
 ## Completion checklist

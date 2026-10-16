@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "cn";
-import { usePathname } from "next/navigation";
 
 import { Link } from "@/components/ui/link";
+import { usePathname } from "@/lib/navigation/client";
 
 interface AccountSidebarLink {
   href: string;

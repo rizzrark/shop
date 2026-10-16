@@ -4,12 +4,12 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
 
 const root = resolve(process.argv[2] ?? process.cwd());
-const sourceRoots = ["app", "components", "src/app", "src/components"]
+const sourceRoots = ["src/routes", "components"]
   .map((path) => join(root, path))
   .filter(existsSync);
 
 if (sourceRoots.length === 0) {
-  console.error(`No app or components directories found under ${root}`);
+  console.error(`No src/routes or components directories found under ${root}`);
   process.exit(1);
 }
 
@@ -50,43 +50,31 @@ for (const file of files) {
     report(
       "error",
       file,
-      "Native <img> found; use next/image unless this is an intentional exception.",
+      "Native <img> found; use @/components/ui/image unless this is an intentional exception.",
     );
   }
 
-  if (/^["']use client["'];?/m.test(source) && /(^|\/)(page|layout)\.[jt]sx$/.test(normalized)) {
+  if (
+    /^["']use client["'];?/m.test(source) &&
+    normalized.startsWith("src/routes/") &&
+    !normalized.endsWith("-client.tsx")
+  ) {
     report(
       "review",
       file,
-      "A page or layout is a client boundary; verify that it cannot be pushed down.",
-    );
-  }
-
-  if (/export\s+const\s+instant\s*=\s*false\b/.test(source)) {
-    report(
-      "review",
-      file,
-      "instant = false opts out of instant-navigation and static-shell validation; fix the blocking read with Suspense or cache instead.",
-    );
-  }
-
-  if (/(^|\/)app\/(.*\/)?loading\.[jt]sx$/.test(normalized)) {
-    report(
-      "review",
-      file,
-      "Route skeleton lives in loading.tsx; keep an inline Suspense boundary with an aria-busy skeleton instead.",
+      "A route file is a client boundary; verify that it cannot be pushed down.",
     );
   }
 
   if (
     sharedLinkFiles.length > 0 &&
     !sharedLinkFiles.includes(normalized) &&
-    /from\s+["']next\/link["']/.test(source)
+    /import\s*\{[^}]*\bLink\b[^}]*\}\s*from\s+["']@tanstack\/react-router["']/.test(source)
   ) {
     report(
       "review",
       file,
-      "Imports next/link directly; internal links use the shared Link from components/ui/link.",
+      "Imports Link from @tanstack/react-router; internal links use the shared Link from components/ui/link.",
     );
   }
 
@@ -99,7 +87,7 @@ for (const file of files) {
       report(
         "review",
         file,
-        "Image priority is deprecated in Next.js 16; choose preload, eager loading, or fetchPriority intentionally.",
+        "Image priority is not a storefront prop; choose preload, eager loading, or fetchPriority intentionally.",
       );
     }
   }

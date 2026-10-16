@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 
 import { createShopifyRequestContext, type ShopifyRequestContext } from "@shopify/hydrogen";
@@ -6,9 +7,8 @@ import {
   type ReadonlyCustomerSessionManager,
   type WritableCustomerSessionManager,
 } from "@shopify/hydrogen/customer-account";
-import { io } from "next/cache";
-import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect } from "@tanstack/react-router";
+import { getRequest, getRequestHeader } from "@tanstack/react-start/server";
 import { cache } from "react";
 
 import { shopConfig } from "@/lib/config";
@@ -26,6 +26,27 @@ const COOKIE_NAME = "shop_customer_session";
 const REFRESH_ATTEMPT_HEADER = "x-customer-refresh-attempted";
 
 const REFRESH_ATTEMPT_PARAM = "refreshed";
+
+const requestState = new AsyncLocalStorage<{ refreshAttempted: boolean }>();
+
+export function runWithCustomerRequest<T>(request: Request, run: () => T): T {
+  return requestState.run({ refreshAttempted: requestMarksRefresh(request) }, run);
+}
+
+function requestMarksRefresh(request: Request): boolean {
+  if (new URL(request.url).searchParams.has(REFRESH_ATTEMPT_PARAM)) return true;
+  const referer = request.headers.get("referer");
+  if (!referer) return false;
+  try {
+    return new URL(referer).searchParams.has(REFRESH_ATTEMPT_PARAM);
+  } catch {
+    return false;
+  }
+}
+
+function requestCookie(): string | null {
+  return getRequestHeader("cookie") ?? null;
+}
 
 function parseCookies(cookieHeader: string | null): Map<string, string> {
   const cookies = new Map<string, string>();
@@ -168,7 +189,7 @@ function createSessionManager(
 let shopifyCustomerSession: ReturnType<typeof createCustomerSession> | undefined;
 
 export function getHydrogenCustomerSession() {
-  if (!shopConfig.auth.isEnabled) notFound();
+  if (!shopConfig.auth.isEnabled) throw notFound();
 
   if (!shopifyCustomerSession) {
     const shopId = process.env.NEXT_PUBLIC_SHOPIFY_SHOP_ID as string;
@@ -231,19 +252,12 @@ export function createCustomerRequestContext(request: Request): ShopifyRequestCo
 
 export const getReadonlyCustomerSessionManager = cache(
   async (): Promise<ReadonlyCustomerSessionManager> => {
-    const requestHeaders = await headers();
-    return createSessionManager(requestHeaders.get("cookie"), shopConfig.site.url, false);
+    return createSessionManager(requestCookie(), shopConfig.site.url, false);
   },
 );
 
 const getReadonlyRequestContext = cache(async (): Promise<ShopifyRequestContext> => {
-  await io();
-  const requestHeaders = await headers();
-  return createCustomerRequestContext(
-    new Request(shopConfig.site.url, {
-      headers: requestHeaders,
-    }),
-  );
+  return createCustomerRequestContext(getRequest());
 });
 
 export const isCustomerLoggedIn = cache(async (): Promise<boolean> => {
@@ -269,24 +283,37 @@ export const getCustomerAccessToken = cache(async (): Promise<string | undefined
 });
 
 export function redirectToCustomerLogin(returnTo: string): never {
-  redirect(`/account/login?return_to=${encodeURIComponent(returnTo)}`);
+  throw redirect({
+    href: `/account/login?return_to=${encodeURIComponent(returnTo)}`,
+    throw: true,
+  });
 }
 
-async function getRequestedPath(fallback: string): Promise<string> {
-  const url = (await headers()).get("x-storefront-url");
-  if (!url) return fallback;
-  const requested = new URL(url);
-  requested.searchParams.delete("_rsc");
-  requested.searchParams.delete(REFRESH_ATTEMPT_PARAM);
-  return `${requested.pathname}${requested.search}`;
+function getRequestedPath(fallback: string): string {
+  const request = getRequest();
+  const current = new URL(request.url);
+  const referer = request.headers.get("referer");
+  const page =
+    current.pathname.startsWith("/_") && referer ? (safeUrl(referer) ?? current) : current;
+  page.searchParams.delete(REFRESH_ATTEMPT_PARAM);
+  const path = `${page.pathname}${page.search}`;
+  return path || fallback;
+}
+
+function safeUrl(value: string): URL | undefined {
+  try {
+    return new URL(value);
+  } catch {
+    return undefined;
+  }
 }
 
 export async function requireCustomerSession(): Promise<void> {
-  if (!shopConfig.auth.isEnabled) notFound();
-  if (!(await isCustomerLoggedIn())) redirectToCustomerLogin(await getRequestedPath("/account"));
+  if (!shopConfig.auth.isEnabled) throw notFound();
+  if (!(await isCustomerLoggedIn())) redirectToCustomerLogin(getRequestedPath("/account"));
 }
 
-// Server Components cannot read the URL, so the proxy forwards the one-shot refresh marker as a request header.
+// Copies the one-shot `refreshed` query marker onto the request header.
 export function forwardCustomerRefreshAttempt(url: URL, requestHeaders: Headers): Headers {
   requestHeaders.delete(REFRESH_ATTEMPT_HEADER);
   if (url.searchParams.has(REFRESH_ATTEMPT_PARAM)) requestHeaders.set(REFRESH_ATTEMPT_HEADER, "1");
@@ -300,15 +327,19 @@ function withRefreshAttempt(path: string): string {
 }
 
 export async function requireCustomerAccessToken(returnTo = "/account"): Promise<string> {
-  if (!shopConfig.auth.isEnabled) notFound();
+  if (!shopConfig.auth.isEnabled) throw notFound();
 
   const accessToken = await getCustomerAccessToken();
   if (accessToken) return accessToken;
 
   // Hydrogen returns to the page unchanged after a transient refresh failure, so a second refresh would loop.
-  const refreshAttempted = (await headers()).has(REFRESH_ATTEMPT_HEADER);
+  const refreshAttempted =
+    requestState.getStore()?.refreshAttempted || requestMarksRefresh(getRequest());
   if (!refreshAttempted && (await isCustomerLoggedIn())) {
-    redirect(`/account/refresh?return_to=${encodeURIComponent(withRefreshAttempt(returnTo))}`);
+    throw redirect({
+      href: `/account/refresh?return_to=${encodeURIComponent(withRefreshAttempt(returnTo))}`,
+      throw: true,
+    });
   }
 
   redirectToCustomerLogin(returnTo);

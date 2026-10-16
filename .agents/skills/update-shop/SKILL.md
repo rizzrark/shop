@@ -24,8 +24,8 @@ Preserve dirty state, merchant design, custom features, integrations, and intent
 Keep each change within its owner:
 
 - **Shopify owns commerce:** catalog, cart state and mutations, checkout, customer accounts, predictive search, policies, and analytics through Hydrogen. Prices, currency, availability, and customer identity come from Shopify.
-- **Next.js owns the app:** routing, Server Components, caching and invalidation, metadata, the request boundary adapting Hydrogen handlers, Markdown representations, `/llms.txt`, structured data, sitemap, and crawl guidance.
-- **Eve owns the agent:** sessions, channels, tools, connections, and `/eve/v1/*`. Eve tools call Shopify directly; Next.js only prepares the browser.
+- **TanStack Start owns the app:** file routes in `src/routes`, server functions, request middleware in `src/start.ts`, caching and invalidation, metadata, Markdown representations, `/llms.txt`, structured data, sitemap, and crawl guidance. `pnpm build` is `vite build`. `pnpm start` is `node .output/server/index.mjs`.
+- **Eve owns the agent:** sessions, channels, tools, connections, and `/eve/v1/*`. Eve tools call Shopify directly. The app prepares the browser cart at `src/routes/api/agent/session.ts` when the agent is enabled. The default storefront leaves the agent off.
 
 Inline English copy and `shopConfig.localization` are template defaults, not a migration mandate. Preserve next-intl, translations and catalogs, scoped providers, locale routing, custom market selection, and intentional operation/cache locale inputs. Do not label localization obsolete drift. Any requested simplification must separately assess copy, formatting, commerce country/language, public URLs, and migration parity; currency remains Shopify-owned.
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { CollectionProvider, useCollection } from "@shopify/hydrogen/react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
   type ReactNode,
@@ -13,6 +12,7 @@ import {
 
 import type { BrowseState } from "@/lib/collections/types";
 import type { Facets } from "@/lib/filters/types";
+import { useRouter, useSearchParams } from "@/lib/navigation/client";
 
 interface CollectionBrowseProviderProps {
   children: ReactNode;
@@ -113,7 +113,7 @@ export function CollectionBrowseFrame({ children, handle, path }: CollectionBrow
   );
 }
 
-// Next.js updates the URL in an insertion effect, so location already matches the page being committed, unrelated params such as utm_* included.
+// The browser URL already matches the page being committed, unrelated params such as utm_* included.
 export function BrowsePublisher({ dataSearch, facets }: BrowsePublisherProps) {
   const store = use(BrowsePublicationContext);
   useLayoutEffect(() => {

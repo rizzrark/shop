@@ -3,11 +3,11 @@
 ## Reference implementation
 
 - Docs: [home page anatomy](https://vercel.shop/docs/anatomy/pages/home)
-- Source: `app/page.tsx`
+- Source: `src/routes/index.tsx`
 - Product sections: `components/product/products-grid.tsx`, `components/product-card/product-card.tsx`
 - Cached reads: `lib/collections/server.ts`, `lib/product/server.ts`
 - Shopify operations: `lib/shopify/operations/collections/server.ts`, `lib/shopify/operations/products/server.ts`
-- Public source fallback: [home route source](https://github.com/vercel/shop/blob/main/app/page.tsx), [template source](https://github.com/vercel/shop)
+- Public source fallback: [template source](https://github.com/vercel/shop)
 
 ## Rendering contract
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { type FormEvent, useState, useTransition } from "react";
 
@@ -27,6 +28,7 @@ export function ProfileForm({
   const [firstName, setFirstName] = useState(profile.firstName ?? "");
   const [lastName, setLastName] = useState(profile.lastName ?? "");
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -36,8 +38,9 @@ export function ProfileForm({
     setSaved(false);
 
     startTransition(async () => {
-      const result = await updateProfileAction({ firstName, lastName });
+      const result = await updateProfileAction({ data: { firstName, lastName } });
       if (result.success) {
+        await router.invalidate();
         setSaved(true);
       } else {
         setError(result.error ?? null);

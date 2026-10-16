@@ -1,12 +1,11 @@
 {
   "ignorePatterns": [
-    "app/globals.css",
-    ".next/**",
+    "src/routeTree.gen.ts",
+    ".output/**",
     "dist/**",
     "build/**",
     ".agents/**",
-    ".claude/**",
-    "app/.well-known/**"
+    ".claude/**"
   ],
   "semi": true,
   "singleQuote": false,

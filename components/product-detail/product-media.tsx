@@ -247,7 +247,7 @@ function Grid({
   for (const [idx, item] of mediaItems.entries()) {
     const tile = idx + firstTileOffset;
     if (tile >= DESKTOP_GRID_PRELOAD_COUNT) break;
-    // Tile 0 is the LCP image and already preloaded via next/image's `preload` prop.
+    // Tile 0 is the LCP image and is already preloaded.
     if (tile > 0 && item.type === "image") preloadDesktopGridImage(item.image);
   }
 

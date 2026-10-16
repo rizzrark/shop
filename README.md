@@ -1,9 +1,9 @@
 # Vercel Shop
 
-Agent-ready commerce, powered by Shopify, Next, and Eve.
+Agent-ready commerce, powered by Shopify and TanStack Start.
 
 - **Shopify owns commerce.** Catalog, cart, checkout, customer accounts, predictive search, and policies come from Shopify through the framework-agnostic Hydrogen SDK (not the Hydrogen React Router framework).
-- **Next.js owns the app.** Routing, Server Components, caching and invalidation, metadata, and the storefront's machine-readable surface for answer engines: Markdown representations, `/llms.txt`, structured data, and the sitemap.
+- **TanStack Start owns the app.** Routing, server rendering, caching and invalidation, metadata, and the storefront's machine-readable surface for answer engines: Markdown representations, `/llms.txt`, structured data, and the sitemap.
 - **Eve owns the agent.** Shop Agent's sessions, tools, and connections; its tools call Shopify directly.
 
 See [vercel.shop](https://vercel.shop) for full documentation.
@@ -14,10 +14,10 @@ Vercel prompts for the three required Shopify values before the first deployment
 
 ## Getting Started
 
-1. Create a new project with pnpm 12 and Node.js 24:
+1. Install dependencies with pnpm 12 and Node.js 24:
 
 ```sh
-pnpm create next-app@latest my-store --example https://github.com/vercel/shop
+pnpm install
 ```
 
 The project includes the Shop skills for your agent in `.agents/skills/`.
@@ -40,6 +40,8 @@ NEXT_PUBLIC_SHOPIFY_SHOP_ID=123456789
 pnpm dev
 ```
 
+`pnpm build` runs `vite build`. `pnpm start` serves that build with `node .output/server/index.mjs`.
+
 For local HTTPS, install [Portless](https://portless.sh) globally with `pnpm add -g portless`, then run `pnpm dev:portless`.
 
 See [vercel.shop/docs/getting-started](https://vercel.shop/docs/getting-started) for the full setup guide and [Storefront API Permissions](https://vercel.shop/docs/reference/storefront-api-permissions) for the complete scope reference.
@@ -53,10 +55,10 @@ Shopify
 - Customer accounts through the Customer Account API, opt-in
 - Shopify analytics, consent, and WebMCP tool registration, opt-in
 
-Next.js
+TanStack Start
 
-- Next.js 16 App Router, React 19, React Compiler, Tailwind CSS 4, shadcn/ui
-- Partial prerendering with tagged caches invalidated by Shopify webhooks
+- TanStack Start on Vite and Nitro, React 19, React Compiler, Tailwind CSS 4, shadcn/ui
+- Tagged catalog cache invalidated by Shopify webhooks
 - Markdown representations, `/llms.txt`, Schema.org data, sitemap, and robots for answer engines
 - Single-locale storefront by default; skills add next-intl and Shopify Markets
 

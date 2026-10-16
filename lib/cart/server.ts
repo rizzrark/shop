@@ -6,7 +6,7 @@ import {
   type ShopifyRequestContext,
 } from "@shopify/hydrogen";
 import type { WritableCustomerSessionManager } from "@shopify/hydrogen/customer-account";
-import { headers } from "next/headers";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { cache } from "react";
 
 import { getHydrogenCustomerSession, getReadonlyCustomerSessionManager } from "@/lib/auth/server";
@@ -27,7 +27,7 @@ export function createCustomerCartHandlers(
 }
 
 export async function getCartIdFromCookie(): Promise<string | undefined> {
-  const cookie = (await headers()).get("cookie") ?? undefined;
+  const cookie = getRequestHeader("cookie") ?? undefined;
   return getCartId({ cookie }) ?? undefined;
 }
 
@@ -68,7 +68,7 @@ async function getCartData(cartId: string | undefined): Promise<CartSeedData> {
   return data;
 }
 
-// Carts are never put in the Next.js data cache — layout and page share only this per-request promise.
+// Carts stay out of the public catalog cache — layout and page share only this per-request promise.
 export const seedCartData = cache(async (): Promise<CartSeedData> => {
   return getCartData(await getCartIdFromCookie());
 });

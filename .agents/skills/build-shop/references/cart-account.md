@@ -3,17 +3,17 @@
 ## Reference implementation
 
 - Docs: [cart anatomy](https://vercel.shop/docs/anatomy/cart), [authentication anatomy](https://vercel.shop/docs/anatomy/authentication)
-- Cart route and components: `app/cart/page.tsx`, `components/cart/`
+- Cart route and components: `src/routes/cart.tsx`, `components/cart/`
 - Cart data and mutations: `lib/cart/` (Hydrogen handlers own reads and mutations; the template supplies an additive fragment and uses Hydrogen's cart-create query to establish a cookie before assistant streaming)
-- Account routes and components: `app/account/`, `components/account/`
+- Account routes and components: `src/routes/account/`, `components/account/`
 - Auth and Customer Account API: `lib/auth/`, `lib/customer/action.ts`, `lib/shopify/customer-account/server.ts`, `lib/shopify/operations/customer/server.ts`
-- Public source fallback: [cart source](https://github.com/vercel/shop/tree/main/components/cart), [account source](https://github.com/vercel/shop/tree/main/app/account), [template source](https://github.com/vercel/shop)
+- Public source fallback: [template source](https://github.com/vercel/shop)
 
 ## Never share personalized data
 
 Cart and account data depend on cookies, sessions, or customer access tokens. Do not put their responses in public `"use cache"` or `"use cache: remote"` entries. Preserve auth gates and keep Customer Account API reads per customer.
 
-Carts are never placed in the Next.js data cache, so cart mutations need no cache invalidation step. Preserve optimistic cart reconciliation so the interface responds immediately and converges on the server result.
+Carts are never placed in the public catalog cache, so cart mutations need no cache invalidation step. Preserve optimistic cart reconciliation so the interface responds immediately and converges on the server result.
 
 For cart provider, bootstrap, optimistic state, nav badge, overlay, or mutation work, read `cart-provider.md` and preserve Hydrogen's ownership of state and reconciliation; do not introduce a parallel cart store.
 

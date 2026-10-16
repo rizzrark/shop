@@ -16,7 +16,7 @@ Vercel Shop enables `cacheComponents`, `partialPrefetching`, and the React Compi
 | Client island       | Local interaction, optimistic UI, browser APIs                                           | Initial public reads, secrets, or broad page composition |
 | Mutation boundary   | Authorization, canonical result, applicable invalidation                                 | Long-lived client state                                  |
 
-Do not call internal Route Handlers from Server Components. Call the operation directly so there is no avoidable HTTP hop. Do not let presentation import raw Shopify response types.
+Do not call internal route handlers from a route loader. Call the operation directly so there is no avoidable HTTP hop. Do not let presentation import raw Shopify response types.
 
 ## Design the dependency graph
 
@@ -27,13 +27,13 @@ List each read and mark what it requires. A dependency should block another only
 - Pass request APIs and derived promises downward until their smallest consumer.
 - Use sibling Suspense boundaries when sections can resolve independently.
 - Keep slow recommendations, facets, account state, or secondary marketing work off the primary path.
-- Avoid a client fetch that repeats data already available to a Server Component.
+- Avoid a client fetch that repeats data already available to the route loader.
 
 A Suspense boundary exposes an async dependency; it does not remove it. If the primary heading or media is inside the slow boundary, the route remains architecturally blocked.
 
 ## Pass request-time work down to a resolved leaf
 
-Inspect `app/products/[handle]/page.tsx` and `components/product-detail/product-detail-section.tsx` for the request-time promise boundaries. Preserve intentional operation locale inputs and validated commerce context in localized installations.
+Inspect `src/routes/products/$handle.tsx` and `components/product-detail/product-detail-section.tsx` for the product page boundaries. Preserve intentional operation locale inputs and validated commerce context in localized installations.
 
 Preserve these boundaries:
 
@@ -52,7 +52,7 @@ Preserve these boundaries:
 | Default first page of a collection or `/collections/all`, with its facets     | `"use cache: remote"` with `cacheLife("minutes")` and collection and product tags; Search & Discovery edits send no webhook          |
 | Filtered or sorted browse, Load more pages, search results, and their facets  | Uncached `fetch*` reads; cached cursor pages drift apart, and each filter combination would be a rarely reused cache entry          |
 | Customer, session, cart, or authorization-dependent data                      | Uncached or private per-session handling; never place it in a shared remote cache                                                   |
-| Mutation results                                                              | Preserve the domain invalidation path; carts are never in the Next.js data cache, so cart mutations need no cache invalidation step |
+| Mutation results                                                              | Preserve the domain invalidation path; carts are never in the public catalog cache, so cart mutations need no cache invalidation step |
 
 Keep cache directives in the data layer. Do not add a second cache in presentation code.
 
@@ -71,28 +71,28 @@ An outer route fallback is appropriate when the route truly has no useful shell.
 
 ## Define client and mutation boundaries
 
-- Keep pages, layouts, data fetchers, grids, cards, static prices, and static media as Server Components.
+- Keep route components, data fetchers, grids, cards, static prices, and static media on the server. Push `"use client"` into leaves.
 - Isolate search dialogs, filters, variant controls, cart controls, galleries, and forms into leaf client components.
 - Pass primitives or narrow serializable view models rather than complete domain objects.
 - Keep optimistic state close to the mutation it predicts, then reconcile with the canonical server result.
-- Invalidate only the affected domain data. Carts are never in the Next.js data cache, so cart mutations need no cache invalidation step.
+- Invalidate only the affected domain data. Carts are never in the public catalog cache, so cart mutations need no cache invalidation step.
 - Lazy-load expensive closed overlays or optional tools, but do not lazy-load primary content to improve a bundle report.
 
 ## Architect media and third parties
 
-- Use `next/image`; reserve space with intrinsic dimensions or an aspect-ratio container.
-- Give every image, including `fill` images and fixed-size thumbnails, the shared `sizes="100vw"` instead of tuning `sizes` to layout breakpoints. The template ships two widths, `deviceSizes: [1320, 1920]`: the screen picks one, and every surface reuses it, which costs fewer optimizations and hits the cache more often than per-layout variants.
+- Use `@/components/ui/image`; reserve space with intrinsic dimensions or an aspect-ratio container.
+- Give every image, including filled images and fixed-size thumbnails, the shared `sizes="100vw"` instead of tuning `sizes` to layout breakpoints. The template ships two widths, 1320 and 1920: the screen picks one, and every surface reuses it.
 - Preload only the clear LCP image. Keep product grids and off-screen gallery media lazy.
 - Keep the LCP resource discoverable in initial server output, not behind a client effect.
-- Use `next/font` and load only required families, subsets, styles, and weights.
-- Use `next/script` or maintained Next.js integrations. Keep non-critical third parties off the initial execution path.
+- Load Geist through `@fontsource` in `src/styles.css`. Add only the families, subsets, styles, and weights a surface uses.
+- Keep non-critical third parties off the initial execution path. Mount them from `components/analytics/index.tsx` or a leaf, not from a framework script package.
 - Server-render a lightweight video poster and avoid making playback code block primary content.
 
 ## Treat navigation as part of the architecture
 
-With partial prefetching, visible links receive a reusable App Shell by default, and `prefetch={true}` adds the destination's URL-specific content. The root layout's `ensureStatic = "prefetch"` keeps both stages static, so prefetches are served from prerendered output instead of rendering per request; `cookies()`, `headers()`, and `searchParams` resolve on navigation behind their Suspense boundary. The template's `Link` from `@/components/ui/link` makes the per-link upgrade only on intent.
+The router preloads on intent (`defaultPreload: "intent"`, 100ms) from `src/router.tsx`. `Link` from `@/components/ui/link` preloads a route on hover after that delay and does not preload the current path. Grids stay on that intent preload.
 
-- Keep `ensureStatic = "prefetch"` on the root layout, and do not add `await navigation()` or `await prefetch()` per subtree; the root level already sets the stage boundary.
+- Do not preload every card from a grid, and do not add a second preload policy per subtree.
 - Use the template `Link` for every internal link, and leave high-fanout links on its intent upgrade.
 - Consider fuller prefetching for a small number of high-intent links.
 - Verify request count and navigation behavior with the tools available in the current environment. Use a production build only when prefetch or deployment behavior is explicitly under investigation.

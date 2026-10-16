@@ -1,5 +1,4 @@
-import { cacheLife, cacheTag } from "next/cache";
-
+import { cacheKey, cacheTag, withCache } from "@/lib/cache/server";
 import { fetchSitemapPage, fetchSitemapPagesCount } from "@/lib/shopify/operations/sitemap/server";
 import type { ShopifySitemapType, SitemapResource } from "@/lib/shopify/operations/sitemap/types";
 
@@ -27,22 +26,23 @@ function tagSitemapResources(type: ShopifySitemapType, resources: SitemapResourc
 }
 
 export async function getShopifySitemapPagesCount(type: ShopifySitemapType): Promise<number> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag(...sitemapCacheTags(type));
-
-  return fetchSitemapPagesCount(type);
+  return withCache(cacheKey("sitemap-count", { type }), "max", sitemapCacheTags(type), () =>
+    fetchSitemapPagesCount(type),
+  );
 }
 
 export async function getShopifySitemapPage(
   type: ShopifySitemapType,
   page: number,
 ): Promise<{ items: SitemapResource[] }> {
-  "use cache: remote";
-  cacheLife("max");
-  cacheTag(...sitemapCacheTags(type));
-
-  const result = await fetchSitemapPage(type, page);
-  tagSitemapResources(type, result.items);
-  return result;
+  return withCache(
+    cacheKey("sitemap-page", { page, type }),
+    "max",
+    sitemapCacheTags(type),
+    async () => {
+      const result = await fetchSitemapPage(type, page);
+      tagSitemapResources(type, result.items);
+      return result;
+    },
+  );
 }

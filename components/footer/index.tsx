@@ -6,15 +6,14 @@ import { Link } from "@/components/ui/link";
 import { Sections } from "@/components/ui/sections";
 import { shopConfig } from "@/lib/config";
 import type { MenuItem } from "@/lib/menu/types";
-import { getShopPolicies } from "@/lib/policies/server";
+import type { ShopPolicy } from "@/lib/policies/types";
 
 import { SocialLinks } from "./social-links";
 import type { SocialLink } from "./social-links";
 
-export async function Footer() {
+export function Footer({ policies }: { policies: ShopPolicy[] }) {
   const socialLinks: SocialLink[] = [];
   const items: MenuItem[] = [];
-  const policies = await getShopPolicies({}).catch(() => []);
   return (
     <footer>
       {/* pb-22 clears the fixed agent ActionBar pill when it renders */}

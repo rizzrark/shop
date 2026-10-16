@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState, useTransition } from "react";
 
@@ -119,6 +120,7 @@ function AddressForm({ address, onSuccess }: { address?: CustomerAddress; onSucc
   const [isDefault, setIsDefault] = useState(address?.isDefault ?? false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isCurrentDefault = address?.isDefault ?? false;
   const handleSubmit = (event: FormEvent) => {
@@ -128,10 +130,11 @@ function AddressForm({ address, onSuccess }: { address?: CustomerAddress; onSucc
 
     startTransition(async () => {
       const result = address
-        ? await updateAddressAction(address.id, values, isDefault)
-        : await createAddressAction(values, isDefault);
+        ? await updateAddressAction({ data: { addressId: address.id, isDefault, raw: values } })
+        : await createAddressAction({ data: { isDefault, raw: values } });
 
       if (result.success) {
+        await router.invalidate();
         onSuccess();
       } else {
         setError(result.error ?? null);
@@ -213,14 +216,16 @@ function DeleteDialog({
   onClose: () => void;
   target: CustomerAddress | null;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const handleDelete = () => {
     if (!target) return;
     setError(null);
     startTransition(async () => {
-      const result = await deleteAddressAction(target.id);
+      const result = await deleteAddressAction({ data: { addressId: target.id } });
       if (result.success) {
+        await router.invalidate();
         onClose();
       } else {
         setError(result.error ?? null);
