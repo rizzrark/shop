@@ -7,7 +7,7 @@ Verify commerce outcomes without prescribing visual composition. Adapt the prese
 - Route docs: [route reference](https://vercel.shop/docs/reference/routes)
 - Cart docs: [cart anatomy](https://vercel.shop/docs/anatomy/cart)
 - Product and PLP docs: [PDP anatomy](https://vercel.shop/docs/anatomy/pages/pdp), [PLP anatomy](https://vercel.shop/docs/anatomy/pages/plp)
-- Source paths to inspect by flow: `app/`, `components/product-detail/`, `components/collections/`, `components/cart/`, `app/account/`, `lib/shopify/operations/`, `lib/cart/`
+- Source paths to inspect by flow: `src/routes/`, `components/product-detail/`, `components/collections/`, `components/cart/`, `src/routes/account/`, `lib/shopify/operations/`, `lib/cart/`
 - Public source fallback: [template source](https://github.com/vercel/shop)
 
 ## Discovery
@@ -31,7 +31,7 @@ Verify commerce outcomes without prescribing visual composition. Adapt the prese
 - Create a cart when none exists and persist its identifier using the existing server cookie path.
 - Apply each optimistic intent exactly once, then reconcile warnings, errors, and the canonical Shopify cart without quantity flashes or reversions.
 - Preserve line identity, attributes, discounts, buyer identity, delivery state, totals, currency, and checkout URL.
-- Carts are never in the Next.js data cache, so cart mutations need no cache invalidation step.
+- Carts are never in the public catalog cache, so cart mutations need no cache invalidation step.
 - Keep checkout handoff usable without requiring unrelated client state to finish hydrating.
 
 ## Customer account

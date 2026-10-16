@@ -295,7 +295,6 @@ function getRequestedPath(fallback: string): string {
   const referer = request.headers.get("referer");
   const page =
     current.pathname.startsWith("/_") && referer ? (safeUrl(referer) ?? current) : current;
-  page.searchParams.delete("_rsc");
   page.searchParams.delete(REFRESH_ATTEMPT_PARAM);
   const path = `${page.pathname}${page.search}`;
   return path || fallback;
@@ -314,7 +313,7 @@ export async function requireCustomerSession(): Promise<void> {
   if (!(await isCustomerLoggedIn())) redirectToCustomerLogin(getRequestedPath("/account"));
 }
 
-// Server Components cannot read the URL, so the proxy forwards the one-shot refresh marker as a request header.
+// Copies the one-shot `refreshed` query marker onto the request header.
 export function forwardCustomerRefreshAttempt(url: URL, requestHeaders: Headers): Headers {
   requestHeaders.delete(REFRESH_ATTEMPT_HEADER);
   if (url.searchParams.has(REFRESH_ATTEMPT_PARAM)) requestHeaders.set(REFRESH_ATTEMPT_HEADER, "1");

@@ -17,7 +17,7 @@ Add next-intl so the storefront serves locale-prefixed URLs (`/en-US/products/fo
 
 ## Inspect and preserve the installation
 
-Read scoped `AGENTS.md`, `package.json`, `next.config.ts`, `lib/config/index.ts`, `lib/content/index.ts`, routes, components, layout, proxy, and any existing localization files. Trace copy consumers, formatting, SEO, markdown, cart, auth, and chat boundaries before editing.
+Read scoped `AGENTS.md`, `package.json`, `vite.config.ts`, `src/start.ts`, `src/router.tsx`, `lib/config/index.ts`, `lib/content/index.ts`, `src/routes`, components, and any existing localization files. Trace copy consumers, formatting, SEO, markdown, cart, auth, and chat boundaries before editing. `pnpm build` is `vite build`. `pnpm start` is `node .output/server/index.mjs`.
 
 Choose the migration path from evidence:
 
@@ -29,11 +29,11 @@ Confirm the default copy locale and supported copy locales with the user. In a n
 
 ## Introduce next-intl and migrate copy
 
-1. On a fresh installation, run `pnpm add next-intl` from the storefront root. Read the installed next-intl plugin/request/routing APIs and local Next.js guides before wiring them. If next-intl already exists, preserve its compatible version rather than reinstalling blindly.
-2. Create `lib/i18n/request/server.ts` as described below, then create the plugin with `createNextIntlPlugin` from `next-intl/plugin` and the explicit request-config path. In the current template, add that plugin to the list passed to `withShopConfig(nextConfig, plugins)`; preserve the conditional `withBotId` and `withEve` entries and their existing order. Do not pass the exported async config factory to a plugin that expects a config object. Preserve customized wrapper composition, rewrites, redirects, and Cache Components settings, and do not enable optional features as part of localization.
+1. On a fresh installation, run `pnpm add next-intl` from the storefront root. Read the installed next-intl request and routing APIs before wiring them. There is no Next config and no `createNextIntlPlugin`. If next-intl already exists, preserve its compatible version rather than reinstalling blindly.
+2. Create `lib/i18n/request/server.ts` as described below. Negotiate the locale in `src/start.ts` after Shopify dispatch and Markdown negotiation, and validate it on the `$locale` file route. Do not add `next.config.ts`, `proxy.ts`, or `app/`. Do not enable the agent, auth, BotID, or analytics as part of localization.
 3. Inventory inline JSX text, labels in component configuration, template literals, and reusable functions in `lib/content/index.ts`. Create the default catalog from the storefront's actual customized copy, not a template snapshot. Convert functions to equivalent ICU messages with the same parameter names, zero/one/many behavior, number formatting, rich text, and accessibility labels. Do not serialize functions into JSON or build a custom `t()` parser.
 4. Create catalogs and explicit loaders for each approved locale. Keep keys and interpolation arguments aligned. Do not present an English fallback as a completed translation; agree on any temporary fallback before enabling that locale publicly.
-5. Replace inline server copy and content function calls with `getTranslations()` from `next-intl/server`. Pass translated primitive labels to client leaves when possible. For interactive plurals/interpolation, wrap only the relevant leaf in a Server Component's `NextIntlClientProvider` with the namespaces it uses, then use `useTranslations()` there. Never pass the full catalog from the root layout, and never pass ordinary copy functions across the server/client boundary. Keep `components/ui/` copy-agnostic.
+5. Replace inline server copy and content function calls with `getTranslations()` from `next-intl/server`. Pass translated primitive labels to client leaves when possible. For interactive plurals/interpolation, wrap only the relevant leaf in `NextIntlClientProvider` with the namespaces it uses, then use `useTranslations()` there. Never pass the full catalog from `src/routes/__root.tsx`, and never pass ordinary copy functions across the server/client boundary. Keep `components/ui/` copy-agnostic.
 6. Cover error boundaries, not-found screens, metadata, email/contact text, and dynamic announcements as well as visible page headings. Components outside a provider need resolved labels or an explicitly scoped provider. Keep a minimal fallback for global errors that cannot access locale context.
 7. Set `<html lang>` and UI number/date formatting from the validated copy locale. Leave `shopConfig.localization.country` and `.language` as deployment commerce settings unless Shopify content translation is explicitly requested and validated. A copy locale such as `fr-FR` does not by itself mean shipping/pricing country `FR`.
 8. After all consumers are migrated and checked, remove only unused content functions. Preserve custom copy and existing catalogs. Update the installation's `AGENTS.md` to require aligned locale catalogs and scoped providers now that it is localized.
@@ -64,76 +64,55 @@ import type { locales } from "./index";
 export type Locale = (typeof locales)[number];
 ```
 
-Use domain/context files for new modules: universal routing configuration in `lib/i18n/routing/index.ts`, client navigation in `lib/i18n/navigation/client.ts`, server request configuration in `lib/i18n/request/server.ts`, and the root-param resolver in `lib/params/server.ts`. Do not add barrels or forwarding exports. Preserve working paths in an existing customized installation rather than renaming them solely to match these examples.
+Use domain/context files for new modules: universal routing configuration in `lib/i18n/routing/index.ts`, client navigation in `lib/i18n/navigation/client.ts`, and server request configuration in `lib/i18n/request/server.ts`. The validated locale is the `$locale` route param. Do not add barrels, forwarding exports, or `next/root-params`. Preserve working paths in an existing customized installation rather than renaming them solely to match these examples.
 
 Validate route params, action inputs, and request payloads against this list. Retain any existing resolver and fallback policy rather than resetting it.
 
 ## What this skill turns on
 
-1. `lib/i18n/routing/index.ts` and `lib/i18n/navigation/client.ts` (next-intl)
-2. Route segment `app/[locale]/` containing every page
-3. `proxy.ts` middleware running `next-intl/middleware`
-4. `lib/params/server.ts` `getLocale()` reading from `next/root-params`
-5. A new next-intl plugin wrapper, catalogs, and `lib/i18n/request/server.ts` loading messages by resolved locale
-6. Locale-prefixed canonicals + hreflang alternates in `lib/seo/index.ts`
-7. Sitemap entries per locale
-8. Locale-aware Markdown negotiation in `proxy.ts`
-9. `generateStaticParams` and the carried `ensureStatic` on the locale root layout
-10. Add or adapt a copy-language selector without introducing a currency selector
+1. `lib/i18n/routing/index.ts` and a locale switcher that uses the storefront router
+2. A `$locale` layout route under `src/routes` containing every localized page
+3. Locale negotiation in `src/start.ts` after Shopify dispatch and Markdown negotiation
+4. Loaders and `beforeLoad` reading `params.locale`
+5. Catalogs and `lib/i18n/request/server.ts` loading messages by the validated locale
+6. Locale-prefixed canonicals and hreflang alternates in `lib/seo/index.ts`
+7. Sitemap entries per locale from `src/routes/sitemap/$shard.ts`
+8. Locale-aware Markdown negotiation in `markdownResponse`
+9. A copy-language selector without a currency selector
 
-## Cache Components compatibility — read this first
+## Routing constraints — read this first
 
-The template runs with `cacheComponents: true`, Partial Prefetching, and `export const ensureStatic = "prefetch"` on the root layout, which requires the App Shell and per-link prefetches to be static. Skipping any of these produces build errors that look unrelated:
+Pages are file routes. The document shell is `src/routes/__root.tsx`. Request handling for Shopify, direct `/refine` 404s, and Markdown lives in `src/start.ts`. Server functions live in `lib/data/server-fn.ts` and `lib/<domain>/action.ts`. The router preloads on intent from `src/router.tsx`. There is no `app/`, `proxy.ts`, `next.config.ts`, Cache Components setting, or `ensureStatic`.
 
-### A. There must be no `app/layout.tsx` above `app/[locale]/`
+### A. Localized pages sit under `$locale`; documents stay at the root
 
-For `[locale]` to be recognized as a root param, the dynamic segment must be the root layout. After Step 2, the file at `app/layout.tsx` should be gone (moved into `app/[locale]/layout.tsx`). If both exist, `rootParams.locale()` returns `undefined`.
+Move shopper pages under `src/routes/$locale/`. Leave the root route, `src/styles.css`, and these routes unlocalized:
 
-### B. Carry `ensureStatic` and give `locale` static params
+- `src/routes/api/**`
+- `src/routes/md/**`
+- `src/routes/llms[.]txt.ts`, `src/routes/robots[.]txt.ts`, `src/routes/manifest[.]webmanifest.ts`
+- `src/routes/sitemap[.]xml.ts` and `src/routes/sitemap/$shard.ts`
+- `src/routes/agent/ucp-profile[.]json.ts`
 
-Move `export const ensureStatic = "prefetch"` with the root layout into `app/[locale]/layout.tsx`, and export `generateStaticParams` there for every enabled locale (Step 11). Cache Components requires at least one value for each root param; without one, the build fails:
+Do not add a second root document above `$locale`. `beforeLoad` on the locale layout throws `notFound()` from `@tanstack/react-router` when `params.locale` is not enabled.
 
-```
-Error: A required root parameter (locale) was not provided in generateStaticParams for /[locale]/cart, please provide at least one value.
-```
+### B. Locale is a route param, not a request read in the cache
 
-Keep the nested `generateStaticParams` exports that return placeholder handles from `lib/static-params`; Next.js combines them with the layout's locales. A localized page or layout must not set a weaker `ensureStatic` than the locale layout:
+Pass the validated locale into `withCache` keys. Do not read cookies or headers inside `withCache`. Server functions receive locale in their validator. They do not call a root-param getter.
 
-```
-A child segment cannot override a parent segment with a less-constrained `ensureStatic`.
-```
+### C. Keep the template `Link`
 
-### C. Keep request reads behind Suspense
+Do not replace `Link` from `@/components/ui/link` with next-intl's `Link`. The template `Link` preloads on intent. Pass explicitly locale-prefixed hrefs. `src/start.ts` can redirect a legacy unprefixed path, but those redirects must not be the only mechanism keeping navigation in the selected language.
 
-Resolve locale from the root param, never from `headers()`, `cookies()`, or `searchParams` in the shell. A request read outside `<Suspense>` anywhere under the locale layout fails every localized route:
-
-```
-Error: Route "/[locale]/account/addresses": Next.js encountered uncached or runtime data during prerendering.
-```
-
-Move the read into the smallest Suspense boundary that needs it; `next build --debug-prerender` reports the source line. Do not set `export const instant = false` to silence the error: `AGENTS.md` forbids that opt-out, and it does not relax `ensureStatic`.
-
-### D. `setRequestLocale` is not used
-
-next-intl docs sometimes show `setRequestLocale(locale)` calls in layouts/pages. **Don't add them under cacheComponents.** That helper writes to a request-scoped store and forces dynamic rendering — it defeats the cache. The rootParams + request-config pattern below makes it unnecessary because the resolved locale is already a cache key.
-
-### E. Keep the template `Link`
-
-Do not replace `Link` from `@/components/ui/link` with next-intl's `Link`. The template `Link` owns intent-based prefetching, and `AGENTS.md` requires it for every internal link. Pass explicitly locale-prefixed hrefs from a Server Component using its validated locale. Middleware can redirect legacy unprefixed paths, but those redirects may negotiate a different locale and must not be the only mechanism keeping navigation in the selected language.
-
-For Server Component redirects, use `next/navigation` and an explicitly prefixed path: `` `/${await getLocale()}/account/login` ``. `next/root-params` is not available in Server Actions or Route Handlers: receive and validate locale at those boundaries instead. Do not rely on middleware language detection to preserve the current URL locale; prefer explicit prefixed hrefs passed from the server for ordinary links.
-
-### F. Keep server redirects outside client navigation
-
-Do not import `lib/i18n/navigation/client.ts` into a server auth gate. Use `next/navigation`'s `redirect` (which returns `never`) and prefix the locale yourself:
+Server redirects use `redirect` from `@tanstack/react-router`:
 
 ```ts
-import { redirect } from "next/navigation";
-import { getLocale } from "@/lib/params/server";
+import { redirect } from "@tanstack/react-router";
 
-if (!session) redirect(`/${await getLocale()}/account/login`);
-return session; // OK, narrowed
+throw redirect({ href: `/${locale}/account/login`, throw: true });
 ```
+
+Do not import `next/navigation` or `lib/i18n/navigation/client.ts` into a server auth gate.
 
 ## Step-by-step
 
@@ -163,45 +142,32 @@ import { routing } from "@/lib/i18n/routing";
 export const { usePathname, useRouter } = createNavigation(routing);
 ```
 
-> Per "Cache Components compatibility E", use this navigation only in the locale switcher and other client-side programmatic routing; internal links keep the template `Link`.
+> Use this navigation only in the locale switcher. Internal links keep `Link` from `@/components/ui/link`. Client navigation otherwise uses `lib/navigation/client.ts`.
 
-### Step 2: Move routes under `app/[locale]/`
+### Step 2: Move shopper routes under `src/routes/$locale/`
 
-Move every route file from `app/` into `app/[locale]/`:
+Move localized pages under `src/routes/$locale/`. Keep `src/routes/__root.tsx` as the document shell. Include home, search, collections, products, cart, account, blogs, pages, and policies. Do not limit the move to that list.
 
-- `app/layout.tsx` → `app/[locale]/layout.tsx` (becomes the root layout for the locale segment). **Delete the original `app/layout.tsx` after the move** — see compatibility A above; both files cannot coexist.
-- `app/page.tsx`, `app/error.tsx`, `app/not-found.tsx` → `app/[locale]/...`
-- `app/account/`, `app/cart/`, `app/collections/`, `app/pages/`, `app/policies/`, `app/products/`, `app/search/` → `app/[locale]/...`
+Leave these unlocalized, beside `$locale`:
 
-**Stay at `app/`:** `api/`, `agent/`, `md/`, `llms.txt/`, `sitemap.xml/`, `sitemap/`, `robots.ts`, `global-error.tsx`, `globals.css`, `favicon.ico`, `icon.svg`, `apple-icon.png`, `manifest.ts`. Include blogs and any custom storefront pages in the localized route audit; do not limit the move to the example list.
+- `src/routes/api/**`
+- `src/routes/md/**`
+- `src/routes/llms[.]txt.ts`, `src/routes/robots[.]txt.ts`, `src/routes/manifest[.]webmanifest.ts`
+- `src/routes/sitemap[.]xml.ts`, `src/routes/sitemap/$shard.ts`
+- `src/routes/agent/ucp-profile[.]json.ts`
+- `src/styles.css` and the files in `public/`
 
-In the moved layout, fix `import "./globals.css"` → `import "../globals.css"` and keep every export, including `export const ensureStatic = "prefetch"`, metadata, and viewport.
+The locale layout `beforeLoad` throws `notFound()` from `@tanstack/react-router` for an unknown locale. Update each `createFileRoute` path to include `$locale`. Regenerate `src/routeTree.gen.ts` by running `pnpm dev` or `pnpm build`. Do not hand-edit the generated tree.
 
-Update every `PageProps<"/foo">` and `LayoutProps<"/foo">` generic to include the locale segment: `PageProps<"/[locale]/products/[handle]">`, `LayoutProps<"/[locale]">`, etc.
+### Step 3: Read locale from the route param
 
-### Step 3: Create `lib/params/server.ts` for Server Component root params
-
-This is a new module on the simplified baseline. In a customized installation, preserve unrelated helpers and extend its existing resolver. Route Handlers use their route context or validated request inputs; Server Actions receive a validated locale argument, not this getter.
-
-```ts
-import { notFound } from "next/navigation";
-import { locale as rootLocale } from "next/root-params";
-import { locales } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n/types";
-
-export async function getLocale(): Promise<Locale> {
-  const current = await rootLocale();
-  if (!current || !locales.includes(current as Locale)) notFound();
-  return current as Locale;
-}
-```
+Loaders and `head` receive `params.locale`. Validate it with `isEnabledLocale` and throw `notFound()` when it fails. Server routes and server functions receive a validated locale argument. They do not import a root-param getter.
 
 ### Step 4: `lib/i18n/request/server.ts` loads messages by resolved locale
 
 ```ts
 import { hasLocale } from "next-intl";
 import { getRequestConfig } from "next-intl/server";
-import { getLocale } from "@/lib/params/server";
 import type enMessages from "@/lib/i18n/messages/en.json";
 import { routing } from "@/lib/i18n/routing";
 
@@ -210,10 +176,9 @@ const messageLoaders: Record<string, () => Promise<{ default: typeof enMessages 
   "fr-FR": () => import("@/lib/i18n/messages/fr.json"),
 };
 
-// Read the root param, not next-intl's request locale, which reads the
-// `x-next-intl-locale` request header and fails the layout's static shell.
-export default getRequestConfig(async () => {
-  const requested = await getLocale();
+// The caller passes the validated `$locale` param. Do not read `x-next-intl-locale`.
+export default getRequestConfig(async ({ requestLocale }) => {
+  const requested = await requestLocale;
   const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
   const loader = messageLoaders[locale];
   const messages = (await loader()).default as typeof enMessages;
@@ -221,77 +186,22 @@ export default getRequestConfig(async () => {
 });
 ```
 
-### Step 5: Extend `proxy.ts`
+### Step 5: Extend `src/start.ts`
 
-Compose next-intl at the end of the existing proxy, where the template returns `NextResponse.next(...)`. Keep everything before that point unchanged: Shopify route dispatch (`handleShopifyRoutes()` returns `null` synchronously when Hydrogen does not own the pathname), and Markdown negotiation (Step 9). Pass the forwarded headers through `forwardCustomerRefreshAttempt` so the account refresh marker still reaches Server Components:
+Keep Shopify dispatch, the direct `/refine` 404, and `markdownResponse` ahead of locale negotiation. Redirect an unprefixed shopper path to the default locale only after those handlers decline the request. Skip `/api`, `/eve`, `/_eve_internal`, file extensions, and the document routes listed in Step 2. There is no matcher export.
 
-```ts
-const handleI18n = createMiddleware(routing);
-
-// Keep the existing imports and add NextRequest as a runtime import.
-export async function proxy(request: NextRequest): Promise<Response> {
-  // Keep the template's Shopify dispatch and Markdown negotiation here, unchanged.
-
-  const i18nRequest = new NextRequest(request, {
-    headers: forwardCustomerRefreshAttempt(
-      request.nextUrl,
-      requestContext.getForwardedRequestHeaders(),
-    ),
-  });
-  const response = handleI18n(i18nRequest);
-  requestContext.applyResponseHeaders(response.headers);
-  if (!response.ok) return response;
-
-  const rewriteHeader = response.headers.get("x-middleware-rewrite");
-  if (!rewriteHeader) return response;
-
-  const rewriteTarget = new URL(rewriteHeader, request.url);
-  const [, ...segments] = rewriteTarget.pathname.split("/");
-  const normalized = new URL(`/${segments.filter(Boolean).join("/")}`, request.url);
-  normalized.search = rewriteTarget.search;
-  return NextResponse.rewrite(normalized, { headers: response.headers });
-}
-```
-
-Update the matcher. The template's single broad matcher is safe only while the proxy does nothing but Shopify dispatch; with locale negotiation, every request Hydrogen declines is localized, including app Route Handlers, webhooks, `robots.txt`, sitemaps, `llms.txt`, and static files. Replace it with Shopify's exact route families, locale-prefixed Shopify endpoints, and a catch-all that skips `/api`, Eve, Next.js and Vercel internals, and paths with a file extension:
-
-```ts
-export const config = {
-  matcher: [
-    "/api/cart",
-    "/api/predictive-search",
-    "/api/mcp",
-    "/api/ucp/mcp",
-    "/api/:apiVersion(unstable|2\\d{3}-\\d{2})/graphql.json",
-    "/__shopify/:path*",
-    "/.well-known/:path*",
-    "/agent/:action(handoff|buyer-claims).:format",
-    "/cart.:format(js|json)",
-    "/cart/:operation(add|update|change|clear).:format(js|json)",
-    "/:page(index|search).md",
-    "/:resource(collections|products)/:handle.md",
-    "/:locale([a-zA-Z]{2}(?:-[a-zA-Z]{2})?)/agent/:action(handoff|buyer-claims).:format",
-    "/:locale([a-zA-Z]{2}(?:-[a-zA-Z]{2})?)/cart.:format(js|json)",
-    "/:locale([a-zA-Z]{2}(?:-[a-zA-Z]{2})?)/cart/:operation(add|update|change|clear).:format(js|json)",
-    "/((?!api|eve(?:/|$)|_eve_internal(?:/|$)|_next/static|_next/image|_next/data|_vercel|favicon.ico|.*\\..*).*)",
-  ],
-};
-```
-
-Downstream applications must be able to add Route Handlers such as `/api/webhooks` or `/api/custom` without sending them through Shopify dispatch or locale middleware. If a new Hydrogen feature claims another reserved route, add that exact route family.
-
-Keep Eve's `/eve/v1/` and `/_eve_internal/` routes outside Shopify dispatch and locale negotiation. Keep `/api/agent/session` and `/agent/ucp-profile.json` unlocalized. If Shop Agent is enabled, carry and validate the copy locale explicitly for conversation context and navigation outputs without changing the deployment's Shopify country/language or allowing client context to select a cart. Keep Next.js request/cache APIs out of Eve's runtime imports.
-
-The file is `proxy.ts` (Next.js 16 convention), not `middleware.ts`.
+New `/api/*` routes stay out of Shopify dispatch and locale negotiation unless Hydrogen owns that path. Keep `/api/agent/session` and `/agent/ucp-profile.json` unlocalized. The agent is off unless `shopConfig.agent.isEnabled` is true. If it is enabled, pass a validated copy locale into conversation context without changing Shopify country or language and without letting the client select a cart. Keep Start request APIs and `lib/cache` out of Eve's runtime imports.
 
 ### Step 6: Internal hrefs — keep the template `Link`
 
-Per "Cache Components compatibility E", **leave existing `Link` imports from `@/components/ui/link` alone** and pass locale-prefixed hrefs from the server. Inspect product cards, menus, breadcrumbs, search, cart, and pagination so navigation retains the selected language without a negotiation redirect. Use next-intl's client navigation in the locale switcher when needed, preserving the resource and query parameters. Reuse existing localized link helpers in customized installations.
+Leave existing `Link` imports from `@/components/ui/link` alone and pass locale-prefixed hrefs. Inspect product cards, menus, breadcrumbs, search, cart, and pagination so navigation retains the selected language without a negotiation redirect. The locale switcher may use the router from `lib/navigation/client.ts`. Reuse existing localized link helpers in customized installations.
 
-For programmatic redirects in server code, use `next/navigation`'s `redirect`:
+For programmatic redirects in server code:
 
 ```ts
-redirect(`/${await getLocale()}/account/login`);
+import { redirect } from "@tanstack/react-router";
+
+throw redirect({ href: `/${locale}/account/login`, throw: true });
 ```
 
 ### Step 7: `lib/seo/index.ts` — locale-aware canonicals + hreflang alternates
@@ -331,11 +241,11 @@ export function buildAlternates({
 }
 ```
 
-Update every caller to pass its validated locale. Server Components can call `getLocale()` from `lib/params/server.ts`; Route Handlers and Server Actions must validate their own inputs.
+Update every caller to pass its validated locale. Route loaders read `params.locale`. Server routes and server functions validate their own inputs.
 
 ### Step 8: Sitemap per-locale entries
 
-Edit `app/sitemap/[shard]/route.ts`. For every resource, emit one `<url>` per enabled locale and add `<xhtml:link rel="alternate" hreflang="..." href="..." />` siblings inside each `<url>` pointing at the other locale variants. Add `xmlns:xhtml="http://www.w3.org/1999/xhtml"` to the `<urlset>` opening tag.
+Edit `src/routes/sitemap/$shard.ts`. For every resource, emit one `<url>` per enabled locale and add `<xhtml:link rel="alternate" hreflang="..." href="..." />` siblings inside each `<url>` pointing at the other locale variants. Add `xmlns:xhtml="http://www.w3.org/1999/xhtml"` to the `<urlset>` opening tag.
 
 ```ts
 import { enabledLocales } from "@/lib/i18n";
@@ -349,29 +259,17 @@ function localizePath(locale: string, pathname: string): string {
 // a <loc> at the localized path and an <xhtml:link> per other locale.
 ```
 
-`app/sitemap.xml/route.ts` (the index) doesn't need locale handling — it only lists shard URLs, which stay locale-agnostic.
+`src/routes/sitemap[.]xml.ts` (the index) doesn't need locale handling — it only lists shard URLs, which stay locale-agnostic.
 
 ### Step 9: Locale-aware Markdown negotiation
 
-`proxy.ts` serves Markdown through `getMarkdownPath()` and `getMarkdownMirrorPath()` in `lib/markdown/representation/index.ts`, which map `/`, `/search`, `/collections/:handle`, `/products/:handle`, and their `.md` mirrors to the unlocalized `app/md/...` handlers. Teach both to accept and strip a validated locale prefix so `/:locale/products/:handle` negotiates like `/products/:handle`, and keep the localized proxy matcher covering the localized paths. Inspect the handlers before forwarding locale; introduce and validate a copy-locale input where needed rather than assuming they already read it. Keep their deployment commerce context unchanged, and preserve `?variant=` and search parameters.
+`src/start.ts` serves Markdown through `markdownResponse`, using `getMarkdownPath()` and `getMarkdownMirrorPath()` in `lib/markdown/representation/index.ts`. Those helpers map `/`, `/search`, `/collections/:handle`, `/products/:handle`, and their `.md` mirrors to `src/routes/md/**`. Teach both to accept and strip a validated locale prefix so `/:locale/products/:handle` negotiates like `/products/:handle`. Inspect the handlers before forwarding locale. Keep their deployment commerce context unchanged, and preserve `?variant=` and search parameters.
 
 ### Step 10: Bare `/` and unknown locales
 
-With `localePrefix: "always"`, next-intl's middleware redirects `/` to the negotiated locale; without the proxy change, `/` returns 404. Do not add an `app/(unlocalized)/page.tsx` fallback: a page outside `app/[locale]/` has no root layout, and the build fails with `(unlocalized)/page.tsx doesn't have a root layout`.
+With `localePrefix: "always"`, `src/start.ts` redirects `/` to the negotiated locale after Shopify and Markdown decline the request. Do not add a second home route outside `$locale`.
 
-Unknown locales and URLs outside every route render Next.js's built-in 404 page, because no root layout applies to them. A branded page needs `app/global-not-found.tsx`, which is experimental (`experimental.globalNotFound`) in this Next.js version; add it only when the user accepts that.
-
-### Step 11: `generateStaticParams` on the locale layout
-
-Keep `export const ensureStatic = "prefetch"` beside it (see "Cache Components compatibility B"):
-
-```ts
-import { locales } from "@/lib/i18n";
-
-export const generateStaticParams = async () => {
-  return locales.map((locale) => ({ locale }));
-};
-```
+Unknown locales throw `notFound()` from the `$locale` layout. The branded page is `notFoundComponent` on `src/routes/__root.tsx`.
 
 ### Step 12: Add or adapt the language selector
 
@@ -383,6 +281,8 @@ After applying:
 
 ```bash
 pnpm lint
+pnpm typecheck
+pnpm test
 pnpm build
 pnpm dev
 # In another terminal, replace locale/handle with actual supported values:
@@ -395,14 +295,13 @@ curl http://localhost:3000/en-US
 
 Smoke-test checklist:
 
-- [ ] Lint and build pass; restart dev after route moves so route types regenerate
-- [ ] The build still reports localized storefront routes as partially prerendered (◐)
-- [ ] Default copy matches the pre-migration storefront, including custom text
+- [ ] Lint, typecheck, tests, and `vite build` pass; restart dev after route moves so `src/routeTree.gen.ts` regenerates
+- [ ] Default copy matches the storefront before the locale prefix, including custom text
 - [ ] Every enabled catalog has matching keys and arguments; zero/one/many, interpolation, errors, and accessibility labels render correctly
 - [ ] Client leaves receive only needed namespaces or primitive labels; no copy functions cross the RSC boundary
 - [ ] Copy-language switching preserves Shopify country, cart identity, and currency behavior
 - [ ] Existing localized installations retain translations, public URLs, providers, and custom commerce behavior
-- [ ] API, OAuth, markdown, cart, and chat boundaries do not call the Server Component root-param getter
+- [ ] API, OAuth, markdown, cart, and chat boundaries validate locale themselves and do not read it from a root-param getter
 - [ ] Report which fresh and existing-installation migration paths were actually exercised; lint/build alone do not prove migration parity
 - [ ] Bare `/` redirects to default locale
 - [ ] Each enabled locale serves 200 at its prefix

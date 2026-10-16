@@ -12,9 +12,11 @@ Build the shop around commerce truth first: what product or collection is being 
 1. Read the project's `AGENTS.md`, the target route, its view contract, and every operation it calls.
 2. If the Vercel Shop template source is available, inspect it before relying on this prose:
    - Template rules: `AGENTS.md`
-   - Route/layout shell: `app/layout.tsx`, `app/page.tsx`
+   - Route shell: `src/routes/__root.tsx`, `src/routes/index.tsx`, `src/router.tsx`
+   - Request middleware: `src/start.ts`
    - Shopify boundary: `lib/shopify/storefront/server.ts`, `lib/shopify/operations/`, `lib/shopify/transforms/`, `lib/product/types.ts`, `lib/customer/types.ts`
-   - Next.js cache boundary: `lib/<domain>/server.ts` cached `get*` wrappers around the uncached `fetch*` operations
+   - Cache boundary: `lib/cache/server.ts` (`withCache`, `cacheTag`) and `lib/<domain>/server.ts` cached `get*` wrappers around the uncached `fetch*` operations
+   - Server functions: `lib/data/server-fn.ts` and `lib/<domain>/action.ts`
    - Shared UI layout primitives: `components/ui/container.tsx`, `components/ui/page.tsx`, `components/ui/sections.tsx`
    - Public source fallback: [template source](https://github.com/vercel/shop)
 3. Use the docs to orient before editing unfamiliar areas:
@@ -22,12 +24,12 @@ Build the shop around commerce truth first: what product or collection is being 
    - [Route reference](https://vercel.shop/docs/reference/routes)
    - [Shopify integration docs](https://vercel.shop/docs/shopify)
    - [API boundary docs](https://vercel.shop/docs/reference/storefront-api)
-4. Read the local Next.js documentation under `node_modules/next/dist/docs/` for any API being changed. This template may use newer Cache Components and prefetch behavior than model knowledge.
-5. Preserve existing cache directives, promises, invalidation tags, auth gates, redirects, metadata, and `notFound()` behavior unless the task explicitly changes the domain behavior.
+4. Read the installed TanStack Start and Router docs for any routing, server-function, or middleware API being changed. `pnpm build` is `vite build`. `pnpm start` is `node .output/server/index.mjs`.
+5. Preserve existing cache lifetimes, promises, invalidation tags, auth gates, redirects, metadata, and `notFound()` behavior unless the task explicitly changes the domain behavior.
 
 ## Hydrogen ownership
 
-The template uses the framework-agnostic Hydrogen preview SDK, not Hydrogen's React Router application framework. Next.js owns routing, rendering, public-data caching, and invalidation. Hydrogen owns commerce state and protocols; the template supplies presentation and framework adapters. Use Hydrogen's cart provider/forms/handlers rather than rebuilding cart state or hydration. Cart types are handler-derived; catalog/account presentation uses domain transforms. Read the installed SDK guidance and verify adapter behavior before changing these boundaries.
+The template uses the framework-agnostic Hydrogen preview SDK, not Hydrogen's React Router application framework. TanStack Start owns file routes, server rendering, public-data caching, and invalidation. Hydrogen owns commerce state and protocols; the template supplies presentation and framework adapters. Use Hydrogen's cart provider/forms/handlers rather than rebuilding cart state or hydration. Cart types are handler-derived; catalog/account presentation uses domain transforms. Read the installed SDK guidance and verify adapter behavior before changing these boundaries.
 
 ## Organize code by domain and execution context
 
@@ -36,7 +38,7 @@ Organize `lib/` by domain, then use only the context files that domain needs:
 - `index.ts` contains universal implementation safe for server and client imports; it is never a re-export barrel.
 - `server.ts` contains server-side implementation; keep it out of client import graphs.
 - `client.ts` is a `"use client"` boundary for browser interaction, not an HTTP transport wrapper.
-- `action.ts` is a `"use server"` entry point whose exports use a verb plus `Action` suffix.
+- `action.ts` exports server functions created with `createServerFn`. Names use a verb plus `Action` suffix. Callers pass `{ data }` when the function has a validator.
 - `types.ts` owns named shared contracts; consumers import types directly rather than through `server.ts` or `action.ts`.
 
 Subdivide large domains with the same context filenames. Put Shopify transports in their API domain's `server.ts` and pure transforms in `index.ts`, even when all current callers run on the server. Do not add descriptive sibling files, flat root implementation modules, empty entry points, forwarding exports, or barrels.
@@ -47,15 +49,15 @@ Keep storefront models in their owning domain's `types.ts`, such as `lib/product
 
 The default storefront uses inline component copy and reusable content functions in `lib/content/index.ts`. Keep copy server-first, pass primitive labels to UI primitives and client leaves, and keep interactive copy in its consuming leaf and import shared content functions only when needed. Do not add a custom `t()` parser, a full browser catalog, or next-intl for a single deployment.
 
-`shopConfig.localization` explicitly sets `{ country: "US", language: "EN", locale: "en-US" }`; country/language configure commerce requests and locale configures formatting. Currency comes from Shopify. Clean URLs and one deployment are the default; `lib/i18n/` and a Server Component locale resolver are absent. Operation locale/cache inputs may still be intentional. Preserve existing next-intl, catalogs, localized routes, and custom commerce behavior in upgraded installations. Use `enable-i18n` for copy/routing or `enable-shopify-markets` for regional commerce rather than coupling the two implicitly.
+`shopConfig.localization` explicitly sets `{ country: "US", language: "EN", locale: "en-US" }`; country/language configure commerce requests and locale configures formatting. Currency comes from Shopify. Clean URLs and one deployment are the default; `lib/i18n/` and a route-param locale resolver are absent. Operation locale/cache inputs may still be intentional. Preserve existing next-intl, catalogs, localized routes, and custom commerce behavior in upgraded installations. Use `enable-i18n` for copy/routing or `enable-shopify-markets` for regional commerce rather than coupling the two implicitly.
 
 ## Shop Agent boundaries
 
 Shop Agent, customer authentication, and BotID are disabled by default. Preserve the installation's feature settings; a storefront redesign or localization change must not enable them implicitly.
 
-For assistant changes, read the installed Eve docs starting at `node_modules/eve/docs/README.md`, then only the guide relevant to the task. Preserve Next.js deployment through `withEve` and the conditional plugin list passed to `withShopConfig` in `next.config.ts`.
+For assistant changes, read the installed Eve docs starting at `node_modules/eve/docs/README.md`, then only the guide relevant to the task. The storefront is served by Nitro on Node. Do not add a Next config or a second app framework.
 
-Eve owns `/eve/v1/*`. Next.js prepares the browser cart through `/api/agent/session`; do not add another chat route or internal commerce HTTP bridge. Tool schemas and execution belong in `agent/tools/`, shared execution helpers in `agent/lib/`, and browser state, presentation helpers, and shared result types in `lib/agent/`. Keep Next.js request/cache APIs out of Eve's runtime imports. Use shared uncached catalog operations and Hydrogen cart handlers directly, with cart identity bound from the browser cookie rather than model arguments.
+Eve owns `/eve/v1/*` and is off unless `shopConfig.agent.isEnabled` is true. The app prepares the browser cart through `src/routes/api/agent/session.ts`; do not add another chat route or internal commerce HTTP bridge. Tool schemas and execution belong in `agent/tools/`, shared execution helpers in `agent/lib/`, and browser state, presentation helpers, and shared result types in `lib/agent/`. Keep Start request APIs and `lib/cache` out of Eve's runtime imports. Use shared uncached catalog operations and Hydrogen cart handlers directly, with cart identity bound from the browser cookie rather than model arguments.
 
 Preserve confirmed-mutation signals and Hydrogen reconciliation; restored messages must not replay cart writes or reopen the drawer. Do not claim exactly-once writes, conversation ownership, or server-history deletion on Clear. For conversation changes, check multiple search turns, visible results, and cumulative usage. For session controls, check restoration, Stop/Clear recovery, and failures. Mitigate abuse and cost with BotID, rate limits, and Gateway spending controls rather than per-session token caps. Distinguish browser/live-store evidence from mocks and build checks.
 
@@ -78,7 +80,7 @@ Write down the route as five layers before editing, using commerce nouns instead
 2. **Data operation** — fetch Shopify data, transform provider types into shop domain types, and own cache scope, tags, and invalidation names.
 3. **Server composition** — render the stable catalog shell first and place independent sections like recommendations, facets, reviews, and account/cart details behind granular boundaries.
 4. **Client island** — own only selection, optimistic intent, browser APIs, effects, and event handlers: variant pickers, galleries, filter controls, carts, and forms.
-5. **Mutation boundary** — use server actions for app-owned mutations and Hydrogen's proxy handlers for browser cart mutations. Return canonical Shopify state and warnings; invalidate public domain caches only when applicable. Let Hydrogen reconcile cart state without a parallel optimistic reducer.
+5. **Mutation boundary** — use server functions for app-owned mutations and Hydrogen's handlers in `src/start.ts` for browser cart mutations at `/api/cart`. Return canonical Shopify state and warnings; invalidate public domain caches only when applicable. Let Hydrogen reconcile cart state without a parallel optimistic reducer.
 
 For each layer's full ownership boundary, see the responsibility table in `references/rendering-architecture.md`. For every dependency, classify it as cacheable shell content, request-time shared content, request-time personalized content, or client-only state. Draw an edge only when one result genuinely requires another. Start all other work concurrently.
 

@@ -1,6 +1,6 @@
 # Cart Provider and Bootstrap Contract
 
-Use this contract when changing cart bootstrap, badges, overlays, cart pages, forms, or assistant mutations. Hydrogen owns cart state and reconciliation; the template adapts it to Next.js and supplies presentation.
+Use this contract when changing cart bootstrap, badges, overlays, cart pages, forms, or assistant mutations. Hydrogen owns cart state and reconciliation; the template adapts it to TanStack Start and supplies presentation.
 
 ## Reference implementation
 
@@ -8,10 +8,10 @@ Use this contract when changing cart bootstrap, badges, overlays, cart pages, fo
 - Server seed and handler extensions: `lib/cart/server.ts`
 - Handler-derived types and typed suspense hook: `lib/cart/{types,client}.ts`
 - Form bindings: `components/cart/{line-form,discount-form}.tsx`
-- Root bootstrap: `app/layout.tsx`
-- Cart page: `app/cart/page.tsx`, `components/cart/cart-page.tsx`
+- Root bootstrap: `src/routes/__root.tsx` (`loadShell`)
+- Cart page: `src/routes/cart.tsx`, `components/cart/cart-page.tsx`
 - Assistant synchronization: `components/agent/cart-bridge.tsx`
-- HTTP and cookie boundary: `proxy.ts`
+- HTTP and cookie boundary: `src/start.ts`
 - Docs: [cart anatomy](https://vercel.shop/docs/anatomy/cart)
 
 ## Ownership
@@ -29,11 +29,11 @@ Hydrogen owns the base cart operations. The template adds selections needed for 
 3. Read the provider's live cart in the cart page and overlay leaves so empty/populated transitions follow mutations without a route refresh.
 4. Preserve Hydrogen's bootstrap-versus-mutation ordering. Do not publish a second server seed into an initialized provider.
 
-Cart reads are memoized only within a request, never stored in the Next.js public data cache. Cart mutations do not invalidate public cache tags.
+Cart reads are memoized only within a request, never stored in the public catalog cache. Cart mutations do not invalidate public cache tags.
 
 ## Mutations
 
-Browser forms use Hydrogen bindings and the `/api/cart` handlers registered by the proxy. The handler response commits cart cookies. The remaining checkout server action is not an alternative add/update/remove transport.
+Browser forms use Hydrogen bindings and the `/api/cart` handlers registered in `src/start.ts`. The handler response commits cart cookies. `prepareCheckoutAction` reads the confirmed checkout URL; it is not an alternative add/update/remove transport.
 
 Eve tools call Hydrogen handlers directly through `agent/lib/cart.ts`. Prepare the cookie-bound cart at `/api/agent/session` before sending; model arguments must not choose it. Refresh Hydrogen when turns settle and after fresh confirmed mutations during streaming. Open the drawer only for fresh mutations after successful reconciliation. Keep checkout and new messages blocked until the turn settles and the cart is confirmed. Restored results must not replay writes or reopen the drawer. Do not automatically retry uncertain writes.
 

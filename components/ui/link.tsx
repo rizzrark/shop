@@ -45,7 +45,7 @@ function canUpgrade(anchor: HTMLAnchorElement): boolean {
     const current = new URL(window.location.href);
     const destination = new URL(anchor.href);
 
-    // The root ensureStatic keeps per-link prefetches static, so search params resolve only on navigation and a same-path upgrade adds nothing.
+    // A same-path preload adds nothing, so intent preload runs only when the pathname changes.
     return (
       (destination.protocol === "http:" || destination.protocol === "https:") &&
       destination.origin === current.origin &&

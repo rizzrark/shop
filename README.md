@@ -1,6 +1,6 @@
 # Vercel Shop
 
-Agent-ready commerce, powered by Shopify, TanStack Start, and Eve.
+Agent-ready commerce, powered by Shopify and TanStack Start.
 
 - **Shopify owns commerce.** Catalog, cart, checkout, customer accounts, predictive search, and policies come from Shopify through the framework-agnostic Hydrogen SDK (not the Hydrogen React Router framework).
 - **TanStack Start owns the app.** Routing, server rendering, caching and invalidation, metadata, and the storefront's machine-readable surface for answer engines: Markdown representations, `/llms.txt`, structured data, and the sitemap.
@@ -14,10 +14,10 @@ Vercel prompts for the three required Shopify values before the first deployment
 
 ## Getting Started
 
-1. Create a new project with pnpm 12 and Node.js 24:
+1. Install dependencies with pnpm 12 and Node.js 24:
 
 ```sh
-pnpm create next-app@latest my-store --example https://github.com/vercel/shop
+pnpm install
 ```
 
 The project includes the Shop skills for your agent in `.agents/skills/`.
@@ -39,6 +39,8 @@ NEXT_PUBLIC_SHOPIFY_SHOP_ID=123456789
 ```sh
 pnpm dev
 ```
+
+`pnpm build` runs `vite build`. `pnpm start` serves that build with `node .output/server/index.mjs`.
 
 For local HTTPS, install [Portless](https://portless.sh) globally with `pnpm add -g portless`, then run `pnpm dev:portless`.
 

@@ -3,12 +3,12 @@
 ## Reference implementation
 
 - Docs: [PDP anatomy](https://vercel.shop/docs/anatomy/pages/pdp), [Shopify PDP data](https://vercel.shop/docs/shopify/pdp)
-- Route: `app/products/[handle]/page.tsx`
+- Route: `src/routes/products/$handle.tsx`
 - Product detail components: `components/product-detail/`
 - Product card and recommendations: `components/product-card/product-card.tsx`, `components/product/related-products-section.tsx`
 - Cached reads: `lib/product/server.ts`
 - Operations and transforms: `lib/shopify/operations/products/server.ts`, `lib/shopify/transforms/product/index.ts`, `lib/product/index.ts`
-- Public source fallback: [PDP route source](https://github.com/vercel/shop/blob/main/app/products/%5Bhandle%5D/page.tsx), [product detail source](https://github.com/vercel/shop/tree/main/components/product-detail), [template source](https://github.com/vercel/shop)
+- Public source fallback: [template source](https://github.com/vercel/shop)
 
 ## Preserve shell coherence
 
@@ -16,11 +16,11 @@ The PDP resolves `getProduct()` before rendering its body. Product identity, tit
 
 Keep these coupled decisions together:
 
-- keep `getProduct()` a cached `get*` read (`"use cache: remote"` with its `cacheLife` and tags);
-- keep the route's only outer Suspense boundary around the params-dependent body, with `ProductDetailSkeleton` matching the resolved layout; do not add request-time boundaries around stable body content;
-- keep `searchParams` unawaited for selected-option state;
-- keep the selected-options promise separate from the slower exact-variant query — this route is the reference for the resolved-leaf shape in `rendering-architecture.md`;
-- keep the URL-selected variant query behind `searchParams`, which the root layout's `ensureStatic = "prefetch"` defers to navigation, so link prefetches never render per-variant data; the default variant comes from the cached product.
+- keep `getProduct()` a cached `get*` read (`withCache` with its lifetime and tags);
+- keep the route `pendingComponent` as `ProductDetailSkeleton`, matching the resolved layout; do not add request-time boundaries around stable body content;
+- read selected options from the route search string inside the product loader;
+- keep the selected options separate from any slower exact-variant work;
+- intent preload must not fetch a different variant for every link; the default variant comes from the cached product.
 
 Inspect the existing PDP boundaries before changing them. Render stable product content immediately where the data contract permits, then suspend only variant-dependent media, price, availability, option state, and purchase controls. Keep a broader boundary only when those concerns genuinely share one blocking dependency.
 

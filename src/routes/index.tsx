@@ -36,7 +36,7 @@ function HomePage() {
                 A Storefront Built on Vercel Shop
               </h1>
               <p className="max-w-xl text-sm text-foreground md:text-base">
-                Agent-ready commerce, powered by Shopify, Next, and Eve.
+                Agent-ready commerce, powered by Shopify and TanStack Start.
               </p>
             </div>
           </div>

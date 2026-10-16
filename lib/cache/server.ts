@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-// Next's minutes profile expires in 1 hour; max expires in 1 year. Tag invalidation drops the entry immediately.
+// The minutes profile expires in 1 hour; max expires in 1 year. Tag invalidation drops the entry immediately.
 export const CACHE_LIFE_MS = {
   max: 365 * 24 * 60 * 60 * 1000,
   minutes: 60 * 60 * 1000,
